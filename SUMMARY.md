@@ -8,7 +8,6 @@
 * [Gerrit VS GitLab](study/gerrit-vs-gitlab.md)
 * [Pod](study/pod.md)
 * [Target](study/target.md)
-* [Git Submodule](study/git-submodule.md)
 * [iOS签名](study/ios-qian-ming.md)
 * [iOS优秀网站](study/ios-you-xiu-wang-zhan.md)
 
@@ -21,4 +20,5 @@
 
 ## 🐼 Git
 
+* [Git Submodule](git/git-submodule.md)
 * [Git秀](git/git-xiu.md)
