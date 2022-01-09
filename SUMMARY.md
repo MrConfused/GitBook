@@ -3,7 +3,7 @@
 ## ✍ Study
 
 * [正则表达式](README.md)
-* [记录](<README (1).md>)
+* [记录](study/ji-lu.md)
 * [GitHub优秀项目](study/github-you-xiu-xiang-mu.md)
 * [Gerrit VS GitLab](study/gerrit-vs-gitlab.md)
 * [Pod](study/pod.md)
