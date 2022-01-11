@@ -19,6 +19,7 @@
 * [Decoder](swift/decoder.md)
 * [swift性能优化](swift/swift-xing-neng-you-hua.md)
 * [混编--NS\_REFINED\_FOR\_SWIFT](swift/hun-bian-nsrefinedforswift.md)
+* [动画](swift/dong-hua.md)
 
 ## 🐼 Git
 
