@@ -17,6 +17,24 @@ swift中有两种属性：一种给声明（declarations）提供额外的信息
 
 {% tabs %}
 {% tab title="Declaration Attributes" %}
+### `` <a href="#available" id="available"></a>
+{% endtab %}
+
+{% tab title="Type Attributes" %}
+### `` <a href="#autoclosure" id="autoclosure"></a>
+{% endtab %}
+
+{% tab title="Switch Case Attributes" %}
+### `` <a href="#unknown" id="unknown"></a>
+{% endtab %}
+{% endtabs %}
+
+
+
+
+
+## Declaration Attributes
+
 ### `1.available` <a href="#available" id="available"></a>
 
 > 表示代码仅在特定的平台和操作系统版本有效。
@@ -413,21 +431,17 @@ swift最多只能拥有一个[顶级代码](broken-reference)入口。&#x20;
 > 用于顶级函数、实例方法、类方法、静态方法。
 >
 > 可以减少在同一作用域里访问的同名函数之间的歧义。
-{% endtab %}
 
-{% tab title="Type Attributes" %}
+## Type Attributes
+
 ### `1.autoclosure` <a href="#autoclosure" id="autoclosure"></a>
 
 ### `2.convention` <a href="#convention" id="convention"></a>
 
 ### `3.escaping` <a href="#escaping" id="escaping"></a>
-{% endtab %}
 
-{% tab title="Switch Case Attributes" %}
+## Switch Case Attributes
+
 ### `1.unknown` <a href="#unknown" id="unknown"></a>
-{% endtab %}
-{% endtabs %}
-
-
 
 ###
