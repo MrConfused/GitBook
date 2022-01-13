@@ -6,7 +6,7 @@ description: 微操大师上线。
 
 ## 文件管理
 
-![git 存储区](../.gitbook/assets/image.png)
+![git 存储区](<../.gitbook/assets/image (1).png>)
 
 ### 1.工作区->暂存区
 
