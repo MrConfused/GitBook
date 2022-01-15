@@ -92,6 +92,230 @@ bb0(%0 : $Int32, %1 : $UnsafeMutablePointer<Optional<UnsafeMutablePointer<Int8>>
       * `// id: %4`：表示该语句对id为4
       * 非赋值语句都会标注 id 是什么。
 
+### sil对enum的处理
+
+{% code title="Model.swift" %}
+```
+enum TaskType: Int {
+    case login
+}
+```
+{% endcode %}
+
+{% code title="Model.sil" %}
+```
+enum TaskType : Int {
+  case login
+  init?(rawValue: Int)
+  typealias RawValue = Int
+  var rawValue: Int { get }
+}
+
+// TaskType.init(rawValue:)
+sil hidden @Model.TaskType.init(rawValue: Swift.Int) -> Model.TaskType? : $@convention(method) (Int, @thin TaskType.Type) -> Optional<TaskType> {
+// %0 "rawValue"                                  // users: %5, %3
+// %1 "$metatype"
+bb0(%0 : $Int, %1 : $@thin TaskType.Type):
+  %2 = alloc_stack $TaskType, var, name "self"    // users: %9, %13, %15
+  debug_value %0 : $Int, let, name "rawValue", argno 1 // id: %3
+  %4 = integer_literal $Builtin.Int64, 0          // user: %6
+  %5 = struct_extract %0 : $Int, #Int._value      // user: %6
+  %6 = builtin "cmp_eq_Int64"(%4 : $Builtin.Int64, %5 : $Builtin.Int64) : $Builtin.Int1 // user: %7
+  cond_br %6, bb1, bb2                            // id: %7
+
+bb1:                                              // Preds: bb0
+  %8 = enum $TaskType, #TaskType.login!enumelt    // users: %10, %12
+  %9 = begin_access [modify] [static] %2 : $*TaskType // users: %10, %11
+  store %8 to %9 : $*TaskType                     // id: %10
+  end_access %9 : $*TaskType                      // id: %11
+  %12 = enum $Optional<TaskType>, #Optional.some!enumelt, %8 : $TaskType // user: %14
+  dealloc_stack %2 : $*TaskType                   // id: %13
+  br bb3(%12 : $Optional<TaskType>)               // id: %14
+
+bb2:                                              // Preds: bb0
+  dealloc_stack %2 : $*TaskType                   // id: %15
+  %16 = enum $Optional<TaskType>, #Optional.none!enumelt // user: %17
+  br bb3(%16 : $Optional<TaskType>)               // id: %17
+
+// %18                                            // user: %19
+bb3(%18 : $Optional<TaskType>):                   // Preds: bb1 bb2
+  return %18 : $Optional<TaskType>                // id: %19
+} // end sil function 'Model.TaskType.init(rawValue: Swift.Int) -> Model.TaskType?'
+
+// Int.init(_builtinIntegerLiteral:)
+sil public_external [transparent] @Swift.Int.init(_builtinIntegerLiteral: Builtin.IntLiteral) -> Swift.Int : $@convention(method) (Builtin.IntLiteral, @thin Int.Type) -> Int {
+// %0                                             // user: %2
+bb0(%0 : $Builtin.IntLiteral, %1 : $@thin Int.Type):
+  %2 = builtin "s_to_s_checked_trunc_IntLiteral_Int64"(%0 : $Builtin.IntLiteral) : $(Builtin.Int64, Builtin.Int1) // user: %3
+  %3 = tuple_extract %2 : $(Builtin.Int64, Builtin.Int1), 0 // user: %4
+  %4 = struct $Int (%3 : $Builtin.Int64)          // user: %5
+  return %4 : $Int                                // id: %5
+} // end sil function 'Swift.Int.init(_builtinIntegerLiteral: Builtin.IntLiteral) -> Swift.Int'
+
+// ~= infix<A>(_:_:)
+sil public_external [transparent] @Swift.~= infix<A where A: Swift.Equatable>(A, A) -> Swift.Bool : $@convention(thin) <T where T : Equatable> (@in_guaranteed T, @in_guaranteed T) -> Bool {
+// %0                                             // user: %4
+// %1                                             // user: %4
+bb0(%0 : $*T, %1 : $*T):
+  %2 = metatype $@thick T.Type                    // user: %4
+  %3 = witness_method $T, #Equatable."==" : <Self where Self : Equatable> (Self.Type) -> (Self, Self) -> Bool : $@convention(witness_method: Equatable) <τ_0_0 where τ_0_0 : Equatable> (@in_guaranteed τ_0_0, @in_guaranteed τ_0_0, @thick τ_0_0.Type) -> Bool // user: %4
+  %4 = apply %3<T>(%0, %1, %2) : $@convention(witness_method: Equatable) <τ_0_0 where τ_0_0 : Equatable> (@in_guaranteed τ_0_0, @in_guaranteed τ_0_0, @thick τ_0_0.Type) -> Bool // user: %5
+  return %4 : $Bool                               // id: %5
+} // end sil function 'Swift.~= infix<A where A: Swift.Equatable>(A, A) -> Swift.Bool'
+
+// TaskType.rawValue.getter
+sil hidden @Model.TaskType.rawValue.getter : Swift.Int : $@convention(method) (TaskType) -> Int {
+// %0 "self"                                      // users: %2, %1
+bb0(%0 : $TaskType):
+  debug_value %0 : $TaskType, let, name "self", argno 1 // id: %1
+  switch_enum %0 : $TaskType, case #TaskType.login!enumelt: bb1 // id: %2
+
+bb1:                                              // Preds: bb0
+  %3 = integer_literal $Builtin.Int64, 0          // user: %4
+  %4 = struct $Int (%3 : $Builtin.Int64)          // user: %5
+  return %4 : $Int                                // id: %5
+} // end sil function 'Model.TaskType.rawValue.getter : Swift.Int'
+
+// protocol witness for static Equatable.== infix(_:_:) in conformance TaskType
+sil private [transparent] [thunk] @protocol witness for static Swift.Equatable.== infix(A, A) -> Swift.Bool in conformance Model.TaskType : Swift.Equatable in Model : $@convention(witness_method: Equatable) (@in_guaranteed TaskType, @in_guaranteed TaskType, @thick TaskType.Type) -> Bool {
+// %0                                             // user: %4
+// %1                                             // user: %4
+bb0(%0 : $*TaskType, %1 : $*TaskType, %2 : $@thick TaskType.Type):
+  // function_ref == infix<A>(_:_:)
+  %3 = function_ref @Swift.== infix<A where A: Swift.RawRepresentable, A.RawValue: Swift.Equatable>(A, A) -> Swift.Bool : $@convention(thin) <τ_0_0 where τ_0_0 : RawRepresentable, τ_0_0.RawValue : Equatable> (@in_guaranteed τ_0_0, @in_guaranteed τ_0_0) -> Bool // user: %4
+  %4 = apply %3<TaskType>(%0, %1) : $@convention(thin) <τ_0_0 where τ_0_0 : RawRepresentable, τ_0_0.RawValue : Equatable> (@in_guaranteed τ_0_0, @in_guaranteed τ_0_0) -> Bool // user: %5
+  return %4 : $Bool                               // id: %5
+} // end sil function 'protocol witness for static Swift.Equatable.== infix(A, A) -> Swift.Bool in conformance Model.TaskType : Swift.Equatable in Model'
+
+// == infix<A>(_:_:)
+sil @Swift.== infix<A where A: Swift.RawRepresentable, A.RawValue: Swift.Equatable>(A, A) -> Swift.Bool : $@convention(thin) <τ_0_0 where τ_0_0 : RawRepresentable, τ_0_0.RawValue : Equatable> (@in_guaranteed τ_0_0, @in_guaranteed τ_0_0) -> Bool
+
+// protocol witness for Hashable.hashValue.getter in conformance TaskType
+sil private [transparent] [thunk] @protocol witness for Swift.Hashable.hashValue.getter : Swift.Int in conformance Model.TaskType : Swift.Hashable in Model : $@convention(witness_method: Hashable) (@in_guaranteed TaskType) -> Int {
+// %0                                             // user: %2
+bb0(%0 : $*TaskType):
+  // function_ref RawRepresentable<>.hashValue.getter
+  %1 = function_ref @(extension in Swift):Swift.RawRepresentable< where A: Swift.Hashable, A.Swift.RawRepresentable.RawValue: Swift.Hashable>.hashValue.getter : Swift.Int : $@convention(method) <τ_0_0 where τ_0_0 : Hashable, τ_0_0 : RawRepresentable, τ_0_0.RawValue : Hashable> (@in_guaranteed τ_0_0) -> Int // user: %2
+  %2 = apply %1<TaskType>(%0) : $@convention(method) <τ_0_0 where τ_0_0 : Hashable, τ_0_0 : RawRepresentable, τ_0_0.RawValue : Hashable> (@in_guaranteed τ_0_0) -> Int // user: %3
+  return %2 : $Int                                // id: %3
+} // end sil function 'protocol witness for Swift.Hashable.hashValue.getter : Swift.Int in conformance Model.TaskType : Swift.Hashable in Model'
+
+// RawRepresentable<>.hashValue.getter
+sil @(extension in Swift):Swift.RawRepresentable< where A: Swift.Hashable, A.Swift.RawRepresentable.RawValue: Swift.Hashable>.hashValue.getter : Swift.Int : $@convention(method) <τ_0_0 where τ_0_0 : Hashable, τ_0_0 : RawRepresentable, τ_0_0.RawValue : Hashable> (@in_guaranteed τ_0_0) -> Int
+
+// protocol witness for Hashable.hash(into:) in conformance TaskType
+sil private [transparent] [thunk] @protocol witness for Swift.Hashable.hash(into: inout Swift.Hasher) -> () in conformance Model.TaskType : Swift.Hashable in Model : $@convention(witness_method: Hashable) (@inout Hasher, @in_guaranteed TaskType) -> () {
+// %0                                             // user: %3
+// %1                                             // user: %3
+bb0(%0 : $*Hasher, %1 : $*TaskType):
+  // function_ref RawRepresentable<>.hash(into:)
+  %2 = function_ref @(extension in Swift):Swift.RawRepresentable< where A: Swift.Hashable, A.Swift.RawRepresentable.RawValue: Swift.Hashable>.hash(into: inout Swift.Hasher) -> () : $@convention(method) <τ_0_0 where τ_0_0 : Hashable, τ_0_0 : RawRepresentable, τ_0_0.RawValue : Hashable> (@inout Hasher, @in_guaranteed τ_0_0) -> () // user: %3
+  %3 = apply %2<TaskType>(%0, %1) : $@convention(method) <τ_0_0 where τ_0_0 : Hashable, τ_0_0 : RawRepresentable, τ_0_0.RawValue : Hashable> (@inout Hasher, @in_guaranteed τ_0_0) -> ()
+  %4 = tuple ()                                   // user: %5
+  return %4 : $()                                 // id: %5
+} // end sil function 'protocol witness for Swift.Hashable.hash(into: inout Swift.Hasher) -> () in conformance Model.TaskType : Swift.Hashable in Model'
+
+// RawRepresentable<>.hash(into:)
+sil @(extension in Swift):Swift.RawRepresentable< where A: Swift.Hashable, A.Swift.RawRepresentable.RawValue: Swift.Hashable>.hash(into: inout Swift.Hasher) -> () : $@convention(method) <τ_0_0 where τ_0_0 : Hashable, τ_0_0 : RawRepresentable, τ_0_0.RawValue : Hashable> (@inout Hasher, @in_guaranteed τ_0_0) -> ()
+
+// protocol witness for Hashable._rawHashValue(seed:) in conformance TaskType
+sil private [transparent] [thunk] @protocol witness for Swift.Hashable._rawHashValue(seed: Swift.Int) -> Swift.Int in conformance Model.TaskType : Swift.Hashable in Model : $@convention(witness_method: Hashable) (Int, @in_guaranteed TaskType) -> Int {
+// %0                                             // user: %3
+// %1                                             // user: %3
+bb0(%0 : $Int, %1 : $*TaskType):
+  // function_ref RawRepresentable<>._rawHashValue(seed:)
+  %2 = function_ref @(extension in Swift):Swift.RawRepresentable< where A: Swift.Hashable, A.Swift.RawRepresentable.RawValue: Swift.Hashable>._rawHashValue(seed: Swift.Int) -> Swift.Int : $@convention(method) <τ_0_0 where τ_0_0 : Hashable, τ_0_0 : RawRepresentable, τ_0_0.RawValue : Hashable> (Int, @in_guaranteed τ_0_0) -> Int // user: %3
+  %3 = apply %2<TaskType>(%0, %1) : $@convention(method) <τ_0_0 where τ_0_0 : Hashable, τ_0_0 : RawRepresentable, τ_0_0.RawValue : Hashable> (Int, @in_guaranteed τ_0_0) -> Int // user: %4
+  return %3 : $Int                                // id: %4
+} // end sil function 'protocol witness for Swift.Hashable._rawHashValue(seed: Swift.Int) -> Swift.Int in conformance Model.TaskType : Swift.Hashable in Model'
+
+// RawRepresentable<>._rawHashValue(seed:)
+sil @(extension in Swift):Swift.RawRepresentable< where A: Swift.Hashable, A.Swift.RawRepresentable.RawValue: Swift.Hashable>._rawHashValue(seed: Swift.Int) -> Swift.Int : $@convention(method) <τ_0_0 where τ_0_0 : Hashable, τ_0_0 : RawRepresentable, τ_0_0.RawValue : Hashable> (Int, @in_guaranteed τ_0_0) -> Int
+
+// protocol witness for RawRepresentable.init(rawValue:) in conformance TaskType
+sil private [transparent] [thunk] @protocol witness for Swift.RawRepresentable.init(rawValue: A.RawValue) -> A? in conformance Model.TaskType : Swift.RawRepresentable in Model : $@convention(witness_method: RawRepresentable) (@in Int, @thick TaskType.Type) -> @out Optional<TaskType> {
+// %0                                             // user: %7
+// %1                                             // user: %3
+bb0(%0 : $*Optional<TaskType>, %1 : $*Int, %2 : $@thick TaskType.Type):
+  %3 = load %1 : $*Int                            // user: %6
+  %4 = metatype $@thin TaskType.Type              // user: %6
+  // function_ref TaskType.init(rawValue:)
+  %5 = function_ref @Model.TaskType.init(rawValue: Swift.Int) -> Model.TaskType? : $@convention(method) (Int, @thin TaskType.Type) -> Optional<TaskType> // user: %6
+  %6 = apply %5(%3, %4) : $@convention(method) (Int, @thin TaskType.Type) -> Optional<TaskType> // user: %7
+  store %6 to %0 : $*Optional<TaskType>           // id: %7
+  %8 = tuple ()                                   // user: %9
+  return %8 : $()                                 // id: %9
+} // end sil function 'protocol witness for Swift.RawRepresentable.init(rawValue: A.RawValue) -> A? in conformance Model.TaskType : Swift.RawRepresentable in Model'
+
+// protocol witness for RawRepresentable.rawValue.getter in conformance TaskType
+sil private [transparent] [thunk] @protocol witness for Swift.RawRepresentable.rawValue.getter : A.RawValue in conformance Model.TaskType : Swift.RawRepresentable in Model : $@convention(witness_method: RawRepresentable) (@in_guaranteed TaskType) -> @out Int {
+// %0                                             // user: %5
+// %1                                             // user: %2
+bb0(%0 : $*Int, %1 : $*TaskType):
+  %2 = load %1 : $*TaskType                       // user: %4
+  // function_ref TaskType.rawValue.getter
+  %3 = function_ref @Model.TaskType.rawValue.getter : Swift.Int : $@convention(method) (TaskType) -> Int // user: %4
+  %4 = apply %3(%2) : $@convention(method) (TaskType) -> Int // user: %5
+  store %4 to %0 : $*Int                          // id: %5
+  %6 = tuple ()                                   // user: %7
+  return %6 : $()                                 // id: %7
+} // end sil function 'protocol witness for Swift.RawRepresentable.rawValue.getter : A.RawValue in conformance Model.TaskType : Swift.RawRepresentable in Model'
+
+// protocol witness for static Equatable.== infix(_:_:) in conformance Int
+sil shared_external [transparent] [thunk] @protocol witness for static Swift.Equatable.== infix(A, A) -> Swift.Bool in conformance Swift.Int : Swift.Equatable in Swift : $@convention(witness_method: Equatable) (@in_guaranteed Int, @in_guaranteed Int, @thick Int.Type) -> Bool {
+// %0                                             // user: %3
+// %1                                             // user: %5
+bb0(%0 : $*Int, %1 : $*Int, %2 : $@thick Int.Type):
+  %3 = struct_element_addr %0 : $*Int, #Int._value // user: %4
+  %4 = load %3 : $*Builtin.Int64                  // user: %7
+  %5 = struct_element_addr %1 : $*Int, #Int._value // user: %6
+  %6 = load %5 : $*Builtin.Int64                  // user: %7
+  %7 = builtin "cmp_eq_Int64"(%4 : $Builtin.Int64, %6 : $Builtin.Int64) : $Builtin.Int1 // user: %8
+  %8 = struct $Bool (%7 : $Builtin.Int1)          // user: %9
+  return %8 : $Bool                               // id: %9
+} // end sil function 'protocol witness for static Swift.Equatable.== infix(A, A) -> Swift.Bool in conformance Swift.Int : Swift.Equatable in Swift'
+
+sil_witness_table hidden TaskType: Equatable module Model {
+  method #Equatable."==": <Self where Self : Equatable> (Self.Type) -> (Self, Self) -> Bool : @protocol witness for static Swift.Equatable.== infix(A, A) -> Swift.Bool in conformance Model.TaskType : Swift.Equatable in Model	// protocol witness for static Equatable.== infix(_:_:) in conformance TaskType
+}
+
+sil_witness_table hidden TaskType: Hashable module Model {
+  base_protocol Equatable: TaskType: Equatable module Model
+  method #Hashable.hashValue!getter: <Self where Self : Hashable> (Self) -> () -> Int : @protocol witness for Swift.Hashable.hashValue.getter : Swift.Int in conformance Model.TaskType : Swift.Hashable in Model	// protocol witness for Hashable.hashValue.getter in conformance TaskType
+  method #Hashable.hash: <Self where Self : Hashable> (Self) -> (inout Hasher) -> () : @protocol witness for Swift.Hashable.hash(into: inout Swift.Hasher) -> () in conformance Model.TaskType : Swift.Hashable in Model	// protocol witness for Hashable.hash(into:) in conformance TaskType
+  method #Hashable._rawHashValue: <Self where Self : Hashable> (Self) -> (Int) -> Int : @protocol witness for Swift.Hashable._rawHashValue(seed: Swift.Int) -> Swift.Int in conformance Model.TaskType : Swift.Hashable in Model	// protocol witness for Hashable._rawHashValue(seed:) in conformance TaskType
+}
+
+sil_witness_table hidden TaskType: RawRepresentable module Model {
+  associated_type RawValue: Int
+  method #RawRepresentable.init!allocator: <Self where Self : RawRepresentable> (Self.Type) -> (Self.RawValue) -> Self? : @protocol witness for Swift.RawRepresentable.init(rawValue: A.RawValue) -> A? in conformance Model.TaskType : Swift.RawRepresentable in Model	// protocol witness for RawRepresentable.init(rawValue:) in conformance TaskType
+  method #RawRepresentable.rawValue!getter: <Self where Self : RawRepresentable> (Self) -> () -> Self.RawValue : @protocol witness for Swift.RawRepresentable.rawValue.getter : A.RawValue in conformance Model.TaskType : Swift.RawRepresentable in Model	// protocol witness for RawRepresentable.rawValue.getter in conformance TaskType
+}
+
+sil_witness_table public_external Int: Equatable module Swift {
+  method #Equatable."==": <Self where Self : Equatable> (Self.Type) -> (Self, Self) -> Bool : @protocol witness for static Swift.Equatable.== infix(A, A) -> Swift.Bool in conformance Swift.Int : Swift.Equatable in Swift	// protocol witness for static Equatable.== infix(_:_:) in conformance Int
+}
+```
+{% endcode %}
+
+
+
+
+
+
+
+{% code title="Model.swift" %}
+```
+```
+{% endcode %}
+
+{% code title="Model.sil" %}
+```
+```
+{% endcode %}
+
+#### Codable
+
 ### sil对struct的处理
 
 #### 存储属性
@@ -104,9 +328,7 @@ bb0(%0 : $Int32, %1 : $UnsafeMutablePointer<Optional<UnsafeMutablePointer<Int8>>
 
 #### Codable
 
-### sil对enum的处理
 
-#### Codable
 
 ### sil对class的处理
 
@@ -121,6 +343,79 @@ bb0(%0 : $Int32, %1 : $UnsafeMutablePointer<Optional<UnsafeMutablePointer<Int8>>
 #### Codable
 
 ### sil对protocol的处理
+
+{% code title="Model.swift" %}
+```
+protocol PointTask {
+    var points: Int { get }
+    func setPoints(newValue: Int)
+    static func log()
+}
+
+extension PointTask {
+    var points: Int { 99 }
+
+    func setPoints(newValue: Int) {}
+    static func log() {}
+}
+```
+{% endcode %}
+
+{% code title="Model.sil" %}
+```
+protocol PointTask {
+  var points: Int { get }
+  func setPoints(newValue: Int)
+  static func log()
+}
+
+extension PointTask {
+  var points: Int { get }
+  func setPoints(newValue: Int)
+  static func log()
+}
+
+// PointTask.points.getter
+sil hidden @(extension in Model):Model.PointTask.points.getter : Swift.Int : $@convention(method) <Self where Self : PointTask> (@in_guaranteed Self) -> Int {
+// %0 "self"                                      // user: %1
+bb0(%0 : $*Self):
+  debug_value_addr %0 : $*Self, let, name "self", argno 1 // id: %1
+  %2 = integer_literal $Builtin.Int64, 99         // user: %3
+  %3 = struct $Int (%2 : $Builtin.Int64)          // user: %4
+  return %3 : $Int                                // id: %4
+} // end sil function '(extension in Model):Model.PointTask.points.getter : Swift.Int'
+
+// Int.init(_builtinIntegerLiteral:)
+sil public_external [transparent] @Swift.Int.init(_builtinIntegerLiteral: Builtin.IntLiteral) -> Swift.Int : $@convention(method) (Builtin.IntLiteral, @thin Int.Type) -> Int {
+// %0                                             // user: %2
+bb0(%0 : $Builtin.IntLiteral, %1 : $@thin Int.Type):
+  %2 = builtin "s_to_s_checked_trunc_IntLiteral_Int64"(%0 : $Builtin.IntLiteral) : $(Builtin.Int64, Builtin.Int1) // user: %3
+  %3 = tuple_extract %2 : $(Builtin.Int64, Builtin.Int1), 0 // user: %4
+  %4 = struct $Int (%3 : $Builtin.Int64)          // user: %5
+  return %4 : $Int                                // id: %5
+} // end sil function 'Swift.Int.init(_builtinIntegerLiteral: Builtin.IntLiteral) -> Swift.Int'
+
+// PointTask.setPoints(newValue:)
+sil hidden @(extension in Model):Model.PointTask.setPoints(newValue: Swift.Int) -> () : $@convention(method) <Self where Self : PointTask> (Int, @in_guaranteed Self) -> () {
+// %0 "newValue"                                  // user: %2
+// %1 "self"                                      // user: %3
+bb0(%0 : $Int, %1 : $*Self):
+  debug_value %0 : $Int, let, name "newValue", argno 1 // id: %2
+  debug_value_addr %1 : $*Self, let, name "self", argno 2 // id: %3
+  %4 = tuple ()                                   // user: %5
+  return %4 : $()                                 // id: %5
+} // end sil function '(extension in Model):Model.PointTask.setPoints(newValue: Swift.Int) -> ()'
+
+// static PointTask.log()
+sil hidden @static (extension in Model):Model.PointTask.log() -> () : $@convention(method) <Self where Self : PointTask> (@thick Self.Type) -> () {
+// %0 "self"                                      // user: %1
+bb0(%0 : $@thick Self.Type):
+  debug_value %0 : $@thick Self.Type, let, name "self", argno 1 // id: %1
+  %2 = tuple ()                                   // user: %3
+  return %2 : $()                                 // id: %3
+} // end sil function 'static (extension in Model):Model.PointTask.log() -> ()'
+```
+{% endcode %}
 
 #### extension
 
