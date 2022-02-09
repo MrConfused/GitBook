@@ -6,9 +6,10 @@ description: 记录学习TCA及使用过程中的问题
 
 ## 第三方博客
 
-1. [pointfreeco / swift-composable-architecture](https://github.com/pointfreeco/swift-composable-architecture)
-2. [**ComposableArchitecture** Documentation](https://pointfreeco.github.io/swift-composable-architecture/)
-3. [TCA - SwiftUI 的救星？(一) ](https://onevcat.com/2021/12/tca-1/)| [TCA - SwiftUI 的救星？(二)](https://onevcat.com/2021/12/tca-2/)
+1. github仓库：[pointfreeco / swift-composable-architecture](https://github.com/pointfreeco/swift-composable-architecture)
+2. 官方文档：[**ComposableArchitecture** Documentation](https://pointfreeco.github.io/swift-composable-architecture/)
+3. 王巍博客：[TCA - SwiftUI 的救星？(一) ](https://onevcat.com/2021/12/tca-1/)| [TCA - SwiftUI 的救星？(二)](https://onevcat.com/2021/12/tca-2/)
+4. rxSwift和combine的操作符对应关系：[CombineCommunity / rxswift-to-combine-cheatsheet](https://github.com/CombineCommunity/rxswift-to-combine-cheatsheet)
 
 ## 问题
 
