@@ -6,7 +6,7 @@ description: Swift 在编译过程中的中间产物，通过 SIL 可以了解sw
 
 
 
-### LLVM
+## LLVM
 
 LLVM是一套用来开发编译器的架构。
 
@@ -24,7 +24,7 @@ LLVM把编译器的前端和后端解耦，使得他的可扩展性非常强。
 
 也让LLVM成为了实现编程语言时的通用基础架构：包括GCC家族、Java、.NET、Python、Ruby、Scheme、Haskell、D等。
 
-### Clang
+## Clang
 
 Clang是基于LLVM架构的C/C++/Objective-C编程语言的编译器前端。
 
@@ -42,7 +42,7 @@ Clang是基于LLVM架构的C/C++/Objective-C编程语言的编译器前端。
 
 
 
-### swift的编译过程：
+## swift编译器
 
 ![swift编译过程](<../.gitbook/assets/image (5).png>)
 
@@ -54,7 +54,7 @@ Clang是基于LLVM架构的C/C++/Objective-C编程语言的编译器前端。
 
 ### sil
 
-特点：
+#### 特点
 
 *   Fully represents program semantics&#x20;
 
@@ -69,7 +69,33 @@ Clang是基于LLVM架构的C/C++/Objective-C编程语言的编译器前端。
 
     在源代码和 LLVM 之间架起了抽象的桥梁
 
+#### 语法
 
+[官方文档](https://github.com/apple/swift/blob/main/docs/SIL.rst)
+
+* `%0`、`%1` 等：寄存器，相当于块中的局部变量
+* `bb0`、`bb1` 等：代码块，由指令组成，结束时从函数返回或者跳转其他代码块
+* `$String`：String 类型
+* `$*String`：String 类型的值地址
+* `sil_global`：全局变量
+* `apply`：调用函数，并传入参数
+* `function_ref`：直接函数调用
+* `class_method`：通过函数表来查找实现调用
+* `sil_vtable`：类的函数表
+* `thin`：静态的
+* `thick`：动态的，运行时的
+* `cond_br`：类似于三目运算符，判断寄存器上值进行代码块跳转
+
+#### 作用
+
+* 看编译器不同级别的优化（比如无用代码裁剪，不同写法对性能影响）
+* 了解函数派发方式（`final`/`static`/`dynamic` 等）对函数的影响，KVO
+* 了解swift语言的底层实现
+* 等等
+
+#### Builtin <a href="#builtin" id="builtin"></a>
+
+Builtin 将 LLVM IR 的类型和方法直接暴露给 Swift 标准库，使用时没有额外的运行时负担。
 
 #### 源码生成sil文件的命令：
 
@@ -84,9 +110,9 @@ swiftc -emit-sil main.swift >> main.sil
 swiftc -emit-sil main.swift | xcrun swift-demangle >> main.sil
 ```
 
+## 阅读sil代码
 
-
-#### 空文件生成的sil：
+### 空文件生成的sil：
 
 {% code title="Model.swift" %}
 ```
@@ -135,7 +161,7 @@ bb0(%0 : $Int32, %1 : $UnsafeMutablePointer<Optional<UnsafeMutablePointer<Int8>>
       * `// id: %4`：表示该语句对id为4
       * 非赋值语句都会标注 id 是什么。
 
-#### sil对enum的处理
+### sil对enum的处理
 
 {% code title="Model.swift" %}
 ```
