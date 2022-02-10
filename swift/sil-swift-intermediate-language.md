@@ -30,19 +30,48 @@ Clang是基于LLVM架构的C/C++/Objective-C编程语言的编译器前端。
 
 ![Clang编译过程](<../.gitbook/assets/image (3).png>)
 
-###
+![Clang的编译过程](<../.gitbook/assets/image (2).png>)
+
+可以看到Clang编译过程中有些问题：
+
+* 源代码和 LLVM IR 之间有一个巨大的抽象层，但是这个抽象层在 clang 里面实现的并不完美：
+  * 语法分析和语义分析之间很乱
+  * AST‘ 转换成 IR 的过程也是相当的曲折
+* IR 不合适源码级别分析，对于源代码级别的静态分析不够友好
+* clang 的静态分析实现（CFG，Control Flow Graph）不够精确，和 IR 之间有很多重复的逻辑。
+
+
 
 ### swift的编译过程：
 
 ![swift编译过程](<../.gitbook/assets/image (5).png>)
 
-与clang相比，swift编译在llvn对前端流程中，在AST和IR中间多了一层SIR。
+![swift的前端编译过程](<../.gitbook/assets/image (1).png>)
 
-目的是弥补clang对缺陷，例如：无法执行一些**高级分析，可靠的诊断和优化。**
+与clang相比，swift的前端编译流程中，在AST和IR中间多了一层SIL，以弥补clang的缺陷，原本在 clang 中独立的静态分析和 IR 生成阶段整合了起来**。**
+
+可以看到Clang在实现的时候，很多阶段交织在一起，耦合严重，而swift加入了sil中间层，解决了这个问题。
+
+### sil
+
+特点：
+
+*   Fully represents program semantics&#x20;
+
+    能够完整的表达程序的语义。
+*   Designed for both code generation and analysis&#x20;
+
+    被设计用于代码生成和静态分析
+*   Sits on the hot path of the compiler pipeline&#x20;
+
+    处于编译的流水线中，而不是独立于之外
+*   Bridges the abstraction gap between source and LLVM
+
+    在源代码和 LLVM 之间架起了抽象的桥梁
 
 
 
-### 源码生成sil文件的命令：
+#### 源码生成sil文件的命令：
 
 ```bash
 // 将m ain.swift 编译成 SIL 代码
@@ -57,7 +86,7 @@ swiftc -emit-sil main.swift | xcrun swift-demangle >> main.sil
 
 
 
-### 空文件生成的sil：
+#### 空文件生成的sil：
 
 {% code title="Model.swift" %}
 ```
@@ -106,7 +135,7 @@ bb0(%0 : $Int32, %1 : $UnsafeMutablePointer<Optional<UnsafeMutablePointer<Int8>>
       * `// id: %4`：表示该语句对id为4
       * 非赋值语句都会标注 id 是什么。
 
-### sil对enum的处理
+#### sil对enum的处理
 
 {% code title="Model.swift" %}
 ```
