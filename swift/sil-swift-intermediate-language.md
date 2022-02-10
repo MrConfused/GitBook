@@ -4,21 +4,35 @@ description: Swift 在编译过程中的中间产物，通过 SIL 可以了解sw
 
 # SIL(Swift Intermediate Language )
 
-### swift的编译过程：
+
+
+### LLVM
+
+LLVM是一套用来开发编译器的架构。
 
 LLVM编译架构的三段式设计（前端、中间优化器、后端）：
 
 ![LLVM三段式](../.gitbook/assets/image.png)
 
-* 前端：**解析源代码**。通过词法分析、语法分析、语义分析，检查代码中是否存在错误，然后构建**抽象语法树**（Abstract Syntax Tree ， **AST**），然后生成**中间代码（** Intermediate Representation，**IR）。**
+* 前端：**解析源代码**。通过词法分析、语法分析、语义分析，检查代码中是否存在错误，然后构建**抽象语法树**（Abstract Syntax Tree ， **AST**），然后生成**中间代码（** Intermediate Representation，**IR**，IR的表现形式有三种：text、memory、bitcode**）。**
 * 中间优化器：负责各种优化，**缩小包的体积**（剥离符号 **）** 、**改善代码的运行时间（** 消除冗余计算、减少指针跳转次数等）。
 * 后端：代码生成器。将IR映射到目标指令集，生成**机器语言**，并且进行机器相关的代码优化。
 
+LLVM使用的是统一的中间代码IR，如果需要支持一种新的语言，只要实现一个新的前端；如果要支持一种新的设备，只要实现一个新的后端。
 
+LLVM把编译器的前端和后端解耦，使得他的可扩展性非常强。
+
+也让LLVM成为了实现编程语言时的通用基础架构：包括GCC家族、Java、.NET、Python、Ruby、Scheme、Haskell、D等。
+
+### Clang
+
+Clang是基于LLVM架构的C/C++/Objective-C编程语言的编译器前端。
 
 ![Clang编译过程](<../.gitbook/assets/image (3).png>)
 
+###
 
+### swift的编译过程：
 
 ![swift编译过程](<../.gitbook/assets/image (5).png>)
 
