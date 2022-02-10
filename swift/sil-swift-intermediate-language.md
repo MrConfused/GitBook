@@ -4,7 +4,7 @@ description: Swift 在编译过程中的中间产物，通过 SIL 可以了解sw
 
 # SIL(Swift Intermediate Language )
 
-
+由于swift编译器是基于LLVM实现，所以我们先了解一下LLVM。
 
 ## LLVM
 
@@ -100,7 +100,7 @@ Builtin 将 LLVM IR 的类型和方法直接暴露给 Swift 标准库，使用�
 #### 源码生成sil文件的命令：
 
 ```bash
-// 将m ain.swift 编译成 SIL 代码
+// 将 main.swift 编译成 SIL 代码
 swiftc -emit-sil main.swift 
 
 // 将 main.swift 编译成 SIL，并保存到 main.sil 文件中
@@ -369,9 +369,11 @@ sil_witness_table public_external Int: Equatable module Swift {
 
 
 
+#### Codable
 
+### swift中的两种函数派发方式
 
-
+#### 直接派发
 
 {% code title="Model.swift" %}
 ```
@@ -383,7 +385,17 @@ sil_witness_table public_external Int: Equatable module Swift {
 ```
 {% endcode %}
 
-#### Codable
+#### 函数表派发
+
+{% code title="Model.swift" %}
+```
+```
+{% endcode %}
+
+{% code title="Model.sil" %}
+```
+```
+{% endcode %}
 
 ### sil对struct的处理
 
@@ -482,9 +494,7 @@ bb0(%0 : $@thick Self.Type):
   debug_value %0 : $@thick Self.Type, let, name "self", argno 1 // id: %1
   %2 = tuple ()                                   // user: %3
   return %2 : $()                                 // id: %3
-} // end sil function 'static (extension in Model):Model.PointTask.log() -> ()'
+} // end sil function 'static (extension in Model):Model.PointTask.log() -> ()
 ```
 {% endcode %}
-
-#### extension
 
