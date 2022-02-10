@@ -28,18 +28,19 @@ Effect().map { _ in TimerAction.timerTicked }
 ### State值实现双向绑定，当作binding使用
 
 ```swift
-// 定义
+// 1.为 State 中的需要和 UI 绑定的变量添加 @BindableState
 struct MyState: Equatable {
   @BindableState var foo: Bool = false
   @BindableState var bar: String = ""
 }
 
-// 
+// 2.将 Action 声明为 BindableAction，
+//   然后添加一个“特殊”的 case binding(BindingAction<Counter>)
 enum MyAction: BindableAction {
   case binding(BindingAction<MyState>)
 }
 
-// 3
+// 3.在 Reducer 中处理这个 .binding，并添加 .binding() 调用。
 let myReducer = {
   // ...
 case .binding:
