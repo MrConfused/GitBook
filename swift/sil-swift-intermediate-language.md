@@ -174,14 +174,6 @@ var b: Int {
 
 {% code title="Model.sil" %}
 ```
-sil_stage canonical
-
-import Builtin
-import Swift
-import SwiftShims
-
-import Foundation
-
 @_hasStorage @_hasInitialValue let a: Int { get }
 
 var b: Int { get }
@@ -202,16 +194,6 @@ bb0(%0 : $Int32, %1 : $UnsafeMutablePointer<Optional<UnsafeMutablePointer<Int8>>
   return %8 : $Int32                              // id: %9
 } // end sil function 'main'
 
-// Int.init(_builtinIntegerLiteral:)
-sil public_external [transparent] @Swift.Int.init(_builtinIntegerLiteral: Builtin.IntLiteral) -> Swift.Int : $@convention(method) (Builtin.IntLiteral, @thin Int.Type) -> Int {
-// %0                                             // user: %2
-bb0(%0 : $Builtin.IntLiteral, %1 : $@thin Int.Type):
-  %2 = builtin "s_to_s_checked_trunc_IntLiteral_Int64"(%0 : $Builtin.IntLiteral) : $(Builtin.Int64, Builtin.Int1) // user: %3
-  %3 = tuple_extract %2 : $(Builtin.Int64, Builtin.Int1), 0 // user: %4
-  %4 = struct $Int (%3 : $Builtin.Int64)          // user: %5
-  return %4 : $Int                                // id: %5
-} // end sil function 'Swift.Int.init(_builtinIntegerLiteral: Builtin.IntLiteral) -> Swift.Int'
-
 // b.getter
 sil hidden @Model.b.getter : Swift.Int : $@convention(thin) () -> Int {
 bb0:
@@ -219,11 +201,6 @@ bb0:
   %1 = load %0 : $*Int                            // user: %2
   return %1 : $Int                                // id: %2
 } // end sil function 'Model.b.getter : Swift.Int'
-
-
-
-// Mappings from '#fileID' to '#filePath':
-//   'Model/Model.swift' => 'Model.swift'
 ```
 {% endcode %}
 
@@ -325,104 +302,17 @@ bb0(%0 : $Int32, %1 : $UnsafeMutablePointer<Optional<UnsafeMutablePointer<Int8>>
 ```
 {% endcode %}
 
-### sil对struct的处理
 
-#### 存储属性
-
-#### 计算属性
-
-#### 实例方法
-
-#### 静态方法
-
-#### Codable
-
-
-
-### sil对class的处理
-
-#### 存储属性
-
-#### 计算属性
-
-#### 实例方法
-
-#### 静态方法
-
-#### Codable
 
 ### sil对protocol的处理
 
 {% code title="Model.swift" %}
 ```
-protocol PointTask {
-    var points: Int { get }
-    func setPoints(newValue: Int)
-    static func log()
-}
-
-extension PointTask {
-    var points: Int { 99 }
-
-    func setPoints(newValue: Int) {}
-    static func log() {}
-}
 ```
 {% endcode %}
 
 {% code title="Model.sil" %}
 ```
-protocol PointTask {
-  var points: Int { get }
-  func setPoints(newValue: Int)
-  static func log()
-}
-
-extension PointTask {
-  var points: Int { get }
-  func setPoints(newValue: Int)
-  static func log()
-}
-
-// PointTask.points.getter
-sil hidden @(extension in Model):Model.PointTask.points.getter : Swift.Int : $@convention(method) <Self where Self : PointTask> (@in_guaranteed Self) -> Int {
-// %0 "self"                                      // user: %1
-bb0(%0 : $*Self):
-  debug_value_addr %0 : $*Self, let, name "self", argno 1 // id: %1
-  %2 = integer_literal $Builtin.Int64, 99         // user: %3
-  %3 = struct $Int (%2 : $Builtin.Int64)          // user: %4
-  return %3 : $Int                                // id: %4
-} // end sil function '(extension in Model):Model.PointTask.points.getter : Swift.Int'
-
-// Int.init(_builtinIntegerLiteral:)
-sil public_external [transparent] @Swift.Int.init(_builtinIntegerLiteral: Builtin.IntLiteral) -> Swift.Int : $@convention(method) (Builtin.IntLiteral, @thin Int.Type) -> Int {
-// %0                                             // user: %2
-bb0(%0 : $Builtin.IntLiteral, %1 : $@thin Int.Type):
-  %2 = builtin "s_to_s_checked_trunc_IntLiteral_Int64"(%0 : $Builtin.IntLiteral) : $(Builtin.Int64, Builtin.Int1) // user: %3
-  %3 = tuple_extract %2 : $(Builtin.Int64, Builtin.Int1), 0 // user: %4
-  %4 = struct $Int (%3 : $Builtin.Int64)          // user: %5
-  return %4 : $Int                                // id: %5
-} // end sil function 'Swift.Int.init(_builtinIntegerLiteral: Builtin.IntLiteral) -> Swift.Int'
-
-// PointTask.setPoints(newValue:)
-sil hidden @(extension in Model):Model.PointTask.setPoints(newValue: Swift.Int) -> () : $@convention(method) <Self where Self : PointTask> (Int, @in_guaranteed Self) -> () {
-// %0 "newValue"                                  // user: %2
-// %1 "self"                                      // user: %3
-bb0(%0 : $Int, %1 : $*Self):
-  debug_value %0 : $Int, let, name "newValue", argno 1 // id: %2
-  debug_value_addr %1 : $*Self, let, name "self", argno 2 // id: %3
-  %4 = tuple ()                                   // user: %5
-  return %4 : $()                                 // id: %5
-} // end sil function '(extension in Model):Model.PointTask.setPoints(newValue: Swift.Int) -> ()'
-
-// static PointTask.log()
-sil hidden @static (extension in Model):Model.PointTask.log() -> () : $@convention(method) <Self where Self : PointTask> (@thick Self.Type) -> () {
-// %0 "self"                                      // user: %1
-bb0(%0 : $@thick Self.Type):
-  debug_value %0 : $@thick Self.Type, let, name "self", argno 1 // id: %1
-  %2 = tuple ()                                   // user: %3
-  return %2 : $()                                 // id: %3
-} // end sil function 'static (extension in Model):Model.PointTask.log() -> ()
 ```
 {% endcode %}
 
