@@ -368,25 +368,328 @@ sil_witness_table hidden MyClass: MyProtocol module Model {
 可以看到：
 
 * 在调用时只有MyClass.classFunc()、MyClass.protocolFunc()和MyNSObjectSubClass.nsObjectSubClass()是用class\_method调用，且在vtable中，是函数表派发
-* 其他都是用function\_ref调用，是直接派发
+* 其他都是用function\_ref调用，且不在vtable中，是直接派发
 
 
 
 #### 2. 指定派发方式
 
-* **final**
-* **dynamic**
-* **@objc**
-* **@Objc + dynamic**
-* **@inline**
+*   **final和static**
+
+    添加了 final 关键字的函数无法被重写，使用静态派发，且对 objc 运行时不可见。
+
+    添加static关键字也会让函数使用静态派发。
 
 {% code title="Model.swift" %}
 ```
+class MyClass1 {
+    final func foo1() {}
+    func foo2() {}
+    static func foo3() {}
+}
+
+final class MyClass2 {
+    func foo1() {}
+    func foo2() {}
+}
 ```
 {% endcode %}
 
 {% code title="Model.sil" %}
 ```
+sil_vtable MyClass1 {
+  #MyClass1.foo2: (MyClass1) -> () -> () : @Model.MyClass1.foo2() -> ()	// MyClass1.foo2()
+  #MyClass1.init!allocator: (MyClass1.Type) -> () -> MyClass1 : @Model.MyClass1.__allocating_init() -> Model.MyClass1	// MyClass1.__allocating_init()
+  #MyClass1.deinit!deallocator: @Model.MyClass1.__deallocating_deinit	// MyClass1.__deallocating_deinit
+}
+
+sil_vtable MyClass2 {
+  #MyClass2.init!allocator: (MyClass2.Type) -> () -> MyClass2 : @Model.MyClass2.__allocating_init() -> Model.MyClass2	// MyClass2.__allocating_init()
+  #MyClass2.deinit!deallocator: @Model.MyClass2.__deallocating_deinit	// MyClass2.__deallocating_deinit
+}
+```
+{% endcode %}
+
+可以看到只有MyClass1.func2()在vtable中，是函数表派发，其他都是直接派发。
+
+
+
+*   **dynamic**
+
+    为非objc类和值类型的函数赋予动态性，但派发方式还是函数表派发。
+
+下例展示了利用dynamic实现Method Swizzling
+
+{% code title="Model.swift" %}
+```
+struct MyStruct {
+    dynamic func foo() {
+        print("bar")
+    }
+}
+
+extension MyStruct {
+    @_dynamicReplacement(for: foo())
+    func foo_new() {
+        print("bar new")
+    }
+}
+
+MyStruct().foo() // bar new
+```
+{% endcode %}
+
+{% code title="Model.sil" %}
+```
+// main
+sil @main : $@convention(c) (Int32, UnsafeMutablePointer<Optional<UnsafeMutablePointer<Int8>>>) -> Int32 {
+bb0(%0 : $Int32, %1 : $UnsafeMutablePointer<Optional<UnsafeMutablePointer<Int8>>>):
+  %2 = metatype $@thin MyStruct.Type              // user: %4
+  // function_ref MyStruct.init()
+  %3 = function_ref @Model.MyStruct.init() -> Model.MyStruct : $@convention(method) (@thin MyStruct.Type) -> MyStruct // user: %4
+  %4 = apply %3(%2) : $@convention(method) (@thin MyStruct.Type) -> MyStruct // user: %6
+  // dynamic_function_ref MyStruct.foo()
+  %5 = dynamic_function_ref @Model.MyStruct.foo() -> () : $@convention(method) (MyStruct) -> () // user: %6
+  %6 = apply %5(%4) : $@convention(method) (MyStruct) -> ()
+  %7 = integer_literal $Builtin.Int32, 0          // user: %8
+  %8 = struct $Int32 (%7 : $Builtin.Int32)        // user: %9
+  return %8 : $Int32                              // id: %9
+} // end sil function 'main'
+
+// MyStruct.foo()
+sil hidden [dynamically_replacable] @Model.MyStruct.foo() -> () : $@convention(method) (MyStruct) -> () {
+// %0 "self"                                      // user: %1
+bb0(%0 : $MyStruct):
+  debug_value %0 : $MyStruct, let, name "self", argno 1 // id: %1
+  %2 = integer_literal $Builtin.Word, 1           // user: %4
+  // function_ref _allocateUninitializedArray<A>(_:)
+  %3 = function_ref @Swift._allocateUninitializedArray<A>(Builtin.Word) -> ([A], Builtin.RawPointer) : $@convention(thin) <τ_0_0> (Builtin.Word) -> (@owned Array<τ_0_0>, Builtin.RawPointer) // user: %4
+  %4 = apply %3<Any>(%2) : $@convention(thin) <τ_0_0> (Builtin.Word) -> (@owned Array<τ_0_0>, Builtin.RawPointer) // users: %6, %5
+  %5 = tuple_extract %4 : $(Array<Any>, Builtin.RawPointer), 0 // user: %17
+  %6 = tuple_extract %4 : $(Array<Any>, Builtin.RawPointer), 1 // user: %7
+  %7 = pointer_to_address %6 : $Builtin.RawPointer to [strict] $*Any // user: %14
+  %8 = string_literal utf8 "bar"                  // user: %13
+  %9 = integer_literal $Builtin.Word, 3           // user: %13
+  %10 = integer_literal $Builtin.Int1, -1         // user: %13
+  %11 = metatype $@thin String.Type               // user: %13
+  // function_ref String.init(_builtinStringLiteral:utf8CodeUnitCount:isASCII:)
+  %12 = function_ref @Swift.String.init(_builtinStringLiteral: Builtin.RawPointer, utf8CodeUnitCount: Builtin.Word, isASCII: Builtin.Int1) -> Swift.String : $@convention(method) (Builtin.RawPointer, Builtin.Word, Builtin.Int1, @thin String.Type) -> @owned String // user: %13
+  %13 = apply %12(%8, %9, %10, %11) : $@convention(method) (Builtin.RawPointer, Builtin.Word, Builtin.Int1, @thin String.Type) -> @owned String // user: %15
+  %14 = init_existential_addr %7 : $*Any, $String // user: %15
+  store %13 to %14 : $*String                     // id: %15
+  // function_ref _finalizeUninitializedArray<A>(_:)
+  %16 = function_ref @Swift._finalizeUninitializedArray<A>(__owned [A]) -> [A] : $@convention(thin) <τ_0_0> (@owned Array<τ_0_0>) -> @owned Array<τ_0_0> // user: %17
+  %17 = apply %16<Any>(%5) : $@convention(thin) <τ_0_0> (@owned Array<τ_0_0>) -> @owned Array<τ_0_0> // users: %26, %23
+  // function_ref default argument 1 of print(_:separator:terminator:)
+  %18 = function_ref @default argument 1 of Swift.print(_: Any..., separator: Swift.String, terminator: Swift.String) -> () : $@convention(thin) () -> @owned String // user: %19
+  %19 = apply %18() : $@convention(thin) () -> @owned String // users: %25, %23
+  // function_ref default argument 2 of print(_:separator:terminator:)
+  %20 = function_ref @default argument 2 of Swift.print(_: Any..., separator: Swift.String, terminator: Swift.String) -> () : $@convention(thin) () -> @owned String // user: %21
+  %21 = apply %20() : $@convention(thin) () -> @owned String // users: %24, %23
+  // function_ref print(_:separator:terminator:)
+  %22 = function_ref @Swift.print(_: Any..., separator: Swift.String, terminator: Swift.String) -> () : $@convention(thin) (@guaranteed Array<Any>, @guaranteed String, @guaranteed String) -> () // user: %23
+  %23 = apply %22(%17, %19, %21) : $@convention(thin) (@guaranteed Array<Any>, @guaranteed String, @guaranteed String) -> ()
+  release_value %21 : $String                     // id: %24
+  release_value %19 : $String                     // id: %25
+  release_value %17 : $Array<Any>                 // id: %26
+  %27 = tuple ()                                  // user: %28
+  return %27 : $()                                // id: %28
+} // end sil function 'Model.MyStruct.foo() -> ()'
+
+// MyStruct.foo_new()
+sil hidden [dynamic_replacement_for "Model.MyStruct.foo() -> ()"] @Model.MyStruct.foo_new() -> () : $@convention(method) (MyStruct) -> () {
+// %0 "self"                                      // user: %1
+bb0(%0 : $MyStruct):
+  debug_value %0 : $MyStruct, let, name "self", argno 1 // id: %1
+  %2 = integer_literal $Builtin.Word, 1           // user: %4
+  // function_ref _allocateUninitializedArray<A>(_:)
+  %3 = function_ref @Swift._allocateUninitializedArray<A>(Builtin.Word) -> ([A], Builtin.RawPointer) : $@convention(thin) <τ_0_0> (Builtin.Word) -> (@owned Array<τ_0_0>, Builtin.RawPointer) // user: %4
+  %4 = apply %3<Any>(%2) : $@convention(thin) <τ_0_0> (Builtin.Word) -> (@owned Array<τ_0_0>, Builtin.RawPointer) // users: %6, %5
+  %5 = tuple_extract %4 : $(Array<Any>, Builtin.RawPointer), 0 // user: %17
+  %6 = tuple_extract %4 : $(Array<Any>, Builtin.RawPointer), 1 // user: %7
+  %7 = pointer_to_address %6 : $Builtin.RawPointer to [strict] $*Any // user: %14
+  %8 = string_literal utf8 "bar new"              // user: %13
+  %9 = integer_literal $Builtin.Word, 7           // user: %13
+  %10 = integer_literal $Builtin.Int1, -1         // user: %13
+  %11 = metatype $@thin String.Type               // user: %13
+  // function_ref String.init(_builtinStringLiteral:utf8CodeUnitCount:isASCII:)
+  %12 = function_ref @Swift.String.init(_builtinStringLiteral: Builtin.RawPointer, utf8CodeUnitCount: Builtin.Word, isASCII: Builtin.Int1) -> Swift.String : $@convention(method) (Builtin.RawPointer, Builtin.Word, Builtin.Int1, @thin String.Type) -> @owned String // user: %13
+  %13 = apply %12(%8, %9, %10, %11) : $@convention(method) (Builtin.RawPointer, Builtin.Word, Builtin.Int1, @thin String.Type) -> @owned String // user: %15
+  %14 = init_existential_addr %7 : $*Any, $String // user: %15
+  store %13 to %14 : $*String                     // id: %15
+  // function_ref _finalizeUninitializedArray<A>(_:)
+  %16 = function_ref @Swift._finalizeUninitializedArray<A>(__owned [A]) -> [A] : $@convention(thin) <τ_0_0> (@owned Array<τ_0_0>) -> @owned Array<τ_0_0> // user: %17
+  %17 = apply %16<Any>(%5) : $@convention(thin) <τ_0_0> (@owned Array<τ_0_0>) -> @owned Array<τ_0_0> // users: %26, %23
+  // function_ref default argument 1 of print(_:separator:terminator:)
+  %18 = function_ref @default argument 1 of Swift.print(_: Any..., separator: Swift.String, terminator: Swift.String) -> () : $@convention(thin) () -> @owned String // user: %19
+  %19 = apply %18() : $@convention(thin) () -> @owned String // users: %25, %23
+  // function_ref default argument 2 of print(_:separator:terminator:)
+  %20 = function_ref @default argument 2 of Swift.print(_: Any..., separator: Swift.String, terminator: Swift.String) -> () : $@convention(thin) () -> @owned String // user: %21
+  %21 = apply %20() : $@convention(thin) () -> @owned String // users: %24, %23
+  // function_ref print(_:separator:terminator:)
+  %22 = function_ref @Swift.print(_: Any..., separator: Swift.String, terminator: Swift.String) -> () : $@convention(thin) (@guaranteed Array<Any>, @guaranteed String, @guaranteed String) -> () // user: %23
+  %23 = apply %22(%17, %19, %21) : $@convention(thin) (@guaranteed Array<Any>, @guaranteed String, @guaranteed String) -> ()
+  release_value %21 : $String                     // id: %24
+  release_value %19 : $String                     // id: %25
+  release_value %17 : $Array<Any>                 // id: %26
+  %27 = tuple ()                                  // user: %28
+  return %27 : $()                                // id: %28
+} // end sil function 'Model.MyStruct.foo_new() -> ()'
+```
+{% endcode %}
+
+
+
+*   **@objc**
+
+    将Swift函数暴露给OC运行时，但并不会改变其派发方式，依旧是函数表派发。
+
+{% code title="Model.swift" %}
+```
+class MyClass {
+    @objc func foo() {}
+}
+```
+{% endcode %}
+
+{% code title="Model.sil" %}
+```
+// MyClass.foo()
+sil hidden @Model.MyClass.foo() -> () : $@convention(method) (@guaranteed MyClass) -> () {
+// %0 "self"                                      // user: %1
+bb0(%0 : $MyClass):
+  debug_value %0 : $MyClass, let, name "self", argno 1 // id: %1
+  %2 = tuple ()                                   // user: %3
+  return %2 : $()                                 // id: %3
+} // end sil function 'Model.MyClass.foo() -> ()'
+
+// @objc MyClass.foo()
+sil hidden [thunk] @@objc Model.MyClass.foo() -> () : $@convention(objc_method) (MyClass) -> () {
+// %0                                             // users: %4, %3, %1
+bb0(%0 : $MyClass):
+  strong_retain %0 : $MyClass                     // id: %1
+  // function_ref MyClass.foo()
+  %2 = function_ref @Model.MyClass.foo() -> () : $@convention(method) (@guaranteed MyClass) -> () // user: %3
+  %3 = apply %2(%0) : $@convention(method) (@guaranteed MyClass) -> () // user: %5
+  strong_release %0 : $MyClass                    // id: %4
+  return %3 : $()                                 // id: %5
+} // end sil function '@objc Model.MyClass.foo() -> ()'
+
+sil_vtable MyClass {
+  #MyClass.foo: (MyClass) -> () -> () : @Model.MyClass.foo() -> ()	// MyClass.foo()
+  #MyClass.init!allocator: (MyClass.Type) -> () -> MyClass : @Model.MyClass.__allocating_init() -> Model.MyClass	// MyClass.__allocating_init()
+  #MyClass.deinit!deallocator: @Model.MyClass.__deallocating_deinit	// MyClass.__deallocating_deinit
+}
+```
+{% endcode %}
+
+可以看到sil生成了MyClass.foo()和@objc MyClass.foo()两个函数，但是foo仍然在vtable中。
+
+
+
+*   **@Objc + dynamic**
+
+    使函数通过objc\_method采用消息派发来调用
+
+{% code title="Model.swift" %}
+```
+class MyClass {
+    dynamic func foo1() {}
+    @objc func foo2() {}
+    @objc dynamic func foo3() {}
+}
+
+let c = MyClass()
+c.foo1()
+c.foo2()
+c.foo3()
+```
+{% endcode %}
+
+{% code title="Model.sil" %}
+```
+// main
+sil @main : $@convention(c) (Int32, UnsafeMutablePointer<Optional<UnsafeMutablePointer<Int8>>>) -> Int32 {
+bb0(%0 : $Int32, %1 : $UnsafeMutablePointer<Optional<UnsafeMutablePointer<Int8>>>):
+  alloc_global @Model.c : Model.MyClass           // id: %2
+  %3 = global_addr @Model.c : Model.MyClass : $*MyClass // users: %14, %11, %8, %7
+  %4 = metatype $@thick MyClass.Type              // user: %6
+  // function_ref MyClass.__allocating_init()
+  %5 = function_ref @Model.MyClass.__allocating_init() -> Model.MyClass : $@convention(method) (@thick MyClass.Type) -> @owned MyClass // user: %6
+  %6 = apply %5(%4) : $@convention(method) (@thick MyClass.Type) -> @owned MyClass // user: %7
+  store %6 to %3 : $*MyClass                      // id: %7
+  %8 = load %3 : $*MyClass                        // users: %9, %10
+  %9 = class_method %8 : $MyClass, #MyClass.foo1 : (MyClass) -> () -> (), $@convention(method) (@guaranteed MyClass) -> () // user: %10
+  %10 = apply %9(%8) : $@convention(method) (@guaranteed MyClass) -> ()
+  %11 = load %3 : $*MyClass                       // users: %12, %13
+  %12 = class_method %11 : $MyClass, #MyClass.foo2 : (MyClass) -> () -> (), $@convention(method) (@guaranteed MyClass) -> () // user: %13
+  %13 = apply %12(%11) : $@convention(method) (@guaranteed MyClass) -> ()
+  %14 = load %3 : $*MyClass                       // users: %15, %16
+  %15 = objc_method %14 : $MyClass, #MyClass.foo3!foreign : (MyClass) -> () -> (), $@convention(objc_method) (MyClass) -> () // user: %16
+  %16 = apply %15(%14) : $@convention(objc_method) (MyClass) -> ()
+  %17 = integer_literal $Builtin.Int32, 0         // user: %18
+  %18 = struct $Int32 (%17 : $Builtin.Int32)      // user: %19
+  return %18 : $Int32                             // id: %19
+} // end sil function 'main'
+
+sil_vtable MyClass {
+  #MyClass.foo1: (MyClass) -> () -> () : @Model.MyClass.foo1() -> ()	// MyClass.foo1()
+  #MyClass.foo2: (MyClass) -> () -> () : @Model.MyClass.foo2() -> ()	// MyClass.foo2()
+  #MyClass.init!allocator: (MyClass.Type) -> () -> MyClass : @Model.MyClass.__allocating_init() -> Model.MyClass	// MyClass.__allocating_init()
+  #MyClass.deinit!deallocator: @Model.MyClass.__deallocating_deinit	// MyClass.__deallocating_deinit
+}
+```
+{% endcode %}
+
+可以看的foo3不在vtable中，并且在main函数中是通过objc\_method调用的
+
+
+
+*   **@inline**
+
+    告诉编译器将此函数静态派发，在sil代码中仍然是vtable派发，但是对函数标记了\[always\_inline]，在之后编译器会对其优化
+
+{% code title="Model.swift" %}
+```
+class MyClass {
+    @inline(__always) func foo() {}
+}
+
+MyClass().foo()
+```
+{% endcode %}
+
+{% code title="Model.sil" %}
+```
+// main
+sil @main : $@convention(c) (Int32, UnsafeMutablePointer<Optional<UnsafeMutablePointer<Int8>>>) -> Int32 {
+bb0(%0 : $Int32, %1 : $UnsafeMutablePointer<Optional<UnsafeMutablePointer<Int8>>>):
+  %2 = metatype $@thick MyClass.Type              // user: %4
+  // function_ref MyClass.__allocating_init()
+  %3 = function_ref @Model.MyClass.__allocating_init() -> Model.MyClass : $@convention(method) (@thick MyClass.Type) -> @owned MyClass // user: %4
+  %4 = apply %3(%2) : $@convention(method) (@thick MyClass.Type) -> @owned MyClass // users: %7, %6, %5
+  %5 = class_method %4 : $MyClass, #MyClass.foo : (MyClass) -> () -> (), $@convention(method) (@guaranteed MyClass) -> () // user: %6
+  %6 = apply %5(%4) : $@convention(method) (@guaranteed MyClass) -> ()
+  strong_release %4 : $MyClass                    // id: %7
+  %8 = integer_literal $Builtin.Int32, 0          // user: %9
+  %9 = struct $Int32 (%8 : $Builtin.Int32)        // user: %10
+  return %9 : $Int32                              // id: %10
+} // end sil function 'main'
+
+// MyClass.foo()
+sil hidden [always_inline] @Model.MyClass.foo() -> () : $@convention(method) (@guaranteed MyClass) -> () {
+// %0 "self"                                      // user: %1
+bb0(%0 : $MyClass):
+  debug_value %0 : $MyClass, let, name "self", argno 1 // id: %1
+  %2 = tuple ()                                   // user: %3
+  return %2 : $()                                 // id: %3
+} // end sil function 'Model.MyClass.foo() -> ()'
+
+sil_vtable MyClass {
+  #MyClass.foo: (MyClass) -> () -> () : @Model.MyClass.foo() -> ()	// MyClass.foo()
+  #MyClass.init!allocator: (MyClass.Type) -> () -> MyClass : @Model.MyClass.__allocating_init() -> Model.MyClass	// MyClass.__allocating_init()
+  #MyClass.deinit!deallocator: @Model.MyClass.__deallocating_deinit	// MyClass.__deallocating_deinit
+}
 ```
 {% endcode %}
 
@@ -394,41 +697,73 @@ sil_witness_table hidden MyClass: MyProtocol module Model {
 
 #### 3. 编译器优化
 
+编译器会尽可能去优化函数派发方式：private函数会被优化为静态派发。
 
+所以在使用target-action时，如果selector是private会报错，因为OC无法获取#selector指定的函数。
+
+
+
+⚠注意：如果NSObject子类中的 属性没有使用 dynamic 修饰， 这个优化会默认让 KVO 失效。因为，这个属性的 getter 和 setter 会被优化为静态派发。虽然，代码可以通过编译，不过动态生成的 KVO 函数就不会被触发。
 
 {% code title="Model.swift" %}
 ```
+class MyClass1: NSObject {
+    private var count: Int = 0
+
+    func foo() {
+        let b = count
+        count = 1
+    }
+}
+
+MyClass1().foo()
 ```
 {% endcode %}
 
 {% code title="Model.sil" %}
 ```
+// MyClass1.foo()
+sil hidden @Model.MyClass1.foo() -> () : $@convention(method) (@guaranteed MyClass1) -> () {
+// %0 "self"                                      // users: %3, %8, %1
+bb0(%0 : $MyClass1):
+  debug_value %0 : $MyClass1, let, name "self", argno 1 // id: %1
+  // function_ref MyClass1.count.getter
+  %2 = function_ref @Model.MyClass1.(count in _EE4D3B8418AA47E17410B45A614091A9).getter : Swift.Int : $@convention(method) (@guaranteed MyClass1) -> Int // user: %3
+  %3 = apply %2(%0) : $@convention(method) (@guaranteed MyClass1) -> Int // user: %4
+  debug_value %3 : $Int, let, name "b"            // id: %4
+  %5 = integer_literal $Builtin.Int64, 1          // user: %6
+  %6 = struct $Int (%5 : $Builtin.Int64)          // user: %8
+  // function_ref MyClass1.count.setter
+  %7 = function_ref @Model.MyClass1.(count in _EE4D3B8418AA47E17410B45A614091A9).setter : Swift.Int : $@convention(method) (Int, @guaranteed MyClass1) -> () // user: %8
+  %8 = apply %7(%6, %0) : $@convention(method) (Int, @guaranteed MyClass1) -> ()
+  %9 = tuple ()                                   // user: %10
+  return %9 : $()                                 // id: %10
+} // end sil function 'Model.MyClass1.foo() -> ()'
+
+sil_vtable MyClass1 {
+  #MyClass1.count!getter: (MyClass1) -> () -> Int : @Model.MyClass1.(count in _EE4D3B8418AA47E17410B45A614091A9).getter : Swift.Int	// MyClass1.count.getter
+  #MyClass1.count!setter: (MyClass1) -> (Int) -> () : @Model.MyClass1.(count in _EE4D3B8418AA47E17410B45A614091A9).setter : Swift.Int	// MyClass1.count.setter
+  #MyClass1.count!modify: (MyClass1) -> () -> () : @Model.MyClass1.(count in _EE4D3B8418AA47E17410B45A614091A9).modify : Swift.Int	// MyClass1.count.modify
+  #MyClass1.foo: (MyClass1) -> () -> () : @Model.MyClass1.foo() -> ()	// MyClass1.foo()
+  #MyClass1.deinit!deallocator: @Model.MyClass1.__deallocating_deinit	// MyClass1.__deallocating_deinit
+}
 ```
 {% endcode %}
+
+可以看到，虽然count的getter和setter在函数表中，但是在foo中调用时使用的是静态派发function\_ref。
 
 ### swift函数派发方式总结
 
 
 
-| **NSObject**   | @nonobjc 或者 final 修饰的方法                                                | 声明作用域中方法    | 扩展方法及被 dynamic 修饰的方法           |
-| -------------- | ---------------------------------------------------------------------- | ----------- | ------------------------------ |
-| **Class**      | 不被 @objc 修饰的扩展方法及被 final 修饰的方法                                         | 声明作用域中方法    | dynamic 修饰的方法或者被 @objc 修饰的扩展方法 |
-| **Protocol**   | 扩展方法                                                                   | 声明作用域中方法    | @objc 修饰的方法或者被 objc 修饰的协议中所有方法 |
-| **Value Type** | 所有方法                                                                   | 无           | 无                              |
-| 其他             | 全局方法，staic 修饰的方法；使用 final 声明的类里面的所有方法；使用 private 声明的方法和属性会隐式 final 声明； | <p><br></p> | <p><br></p>                    |
+| **NSObject**   | @nonobjc 或者 final 修饰的方法                                                                     | 声明作用域中方法    | 扩展方法及被 dynamic 修饰的方法           |
+| -------------- | ------------------------------------------------------------------------------------------- | ----------- | ------------------------------ |
+| **Class**      | <p>不被 @objc 修饰的扩展方法，</p><p>被 final 修饰的方法</p>                                                | 声明作用域中方法    | dynamic 修饰的方法或者被 @objc 修饰的扩展方法 |
+| **Protocol**   | 扩展方法                                                                                        | 声明作用域中方法    | @objc 修饰的方法或者被 objc 修饰的协议中所有方法 |
+| **Value Type** | 所有方法                                                                                        | 无           | 无                              |
+| 其他             | <p>全局方法，staic 修饰的方法；</p><p>使用 final 声明的类里面的所有方法；</p><p>使用 private 声明的方法和属性会隐式 final 声明；</p> | <p><br></p> | <p><br></p>                    |
 
 
-
-
-
-我们知道静态派发要比动态派发效率高。
-
-那么怎么把动态派发消解为静态派发呢？
-
-* struct默认使用静态派发，class默认动态派发。
-* 对于class：
-  * final会约束类无法被继承，动态派发会转为静态派发
-  * private会约束方法或属性无法被外部访问，动态派发会转为静态派发
 
 > swift比OC快的一个关键就是可以消解动态派发。
 
