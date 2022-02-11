@@ -86,33 +86,7 @@ Clang是基于LLVM架构的C/C++/Objective-C编程语言的编译器前端。
 * `thick`：动态的，运行时的
 * `cond_br`：类似于三目运算符，判断寄存器上值进行代码块跳转
 
-### 作用
-
-* 看编译器不同级别的优化（比如无用代码裁剪，不同写法对性能影响）
-* 了解函数派发方式（`final`/`static`/`dynamic` 等）对函数的影响，KVO
-* 了解swift语言的底层实现
-* 等等
-
-### Builtin <a href="#builtin" id="builtin"></a>
-
-Builtin 将 LLVM IR 的类型和方法直接暴露给 Swift 标准库，使用时没有额外的运行时负担。
-
-#### 源码生成sil文件的命令：
-
-```bash
-// 将 main.swift 编译成 SIL 代码
-swiftc -emit-sil main.swift 
-
-// 将 main.swift 编译成 SIL，并保存到 main.sil 文件中
-swiftc -emit-sil main.swift >> main.sil
-
-// 将 main.swift 编译成 SIL的同时， 将命名重整后的符号恢复原样，并保存到 main.sil 文件中
-swiftc -emit-sil main.swift | xcrun swift-demangle > main.sil
-```
-
-## 通过sil理解swift的底层实现
-
-### 空文件生成的sil：
+#### 空文件生成的sil：
 
 {% code title="Model.swift" %}
 ```
@@ -161,48 +135,29 @@ bb0(%0 : $Int32, %1 : $UnsafeMutablePointer<Optional<UnsafeMutablePointer<Int8>>
       * `// id: %4`：表示该语句对id为4
       * 非赋值语句都会标注 id 是什么。
 
-### 存储属性&计算属性
+### 作用
 
-{% code title="Model.swift" %}
+* 看编译器不同级别的优化（比如无用代码裁剪，不同写法对性能影响）
+* 了解函数派发方式（`final`/`static`/`dynamic` 等）对函数的影响，KVO
+* 了解swift语言的底层实现
+* 等等
+
+### Builtin <a href="#builtin" id="builtin"></a>
+
+Builtin 将 LLVM IR 的类型和方法直接暴露给 Swift 标准库，使用时没有额外的运行时负担。
+
+### 源码生成sil文件的命令：
+
+```bash
+// 将 main.swift 编译成 SIL 代码
+swiftc -emit-sil main.swift 
+
+// 将 main.swift 编译成 SIL，并保存到 main.sil 文件中
+swiftc -emit-sil main.swift >> main.sil
+
+// 将 main.swift 编译成 SIL的同时， 将命名重整后的符号恢复原样，并保存到 main.sil 文件中
+swiftc -emit-sil main.swift | xcrun swift-demangle > main.sil
 ```
-let a: Int = 1
-var b: Int {
-    return a
-}
-```
-{% endcode %}
-
-{% code title="Model.sil" %}
-```
-@_hasStorage @_hasInitialValue let a: Int { get }
-
-var b: Int { get }
-
-// a
-sil_global hidden [let] @Model.a : Swift.Int : $Int
-
-// main
-sil @main : $@convention(c) (Int32, UnsafeMutablePointer<Optional<UnsafeMutablePointer<Int8>>>) -> Int32 {
-bb0(%0 : $Int32, %1 : $UnsafeMutablePointer<Optional<UnsafeMutablePointer<Int8>>>):
-  alloc_global @Model.a : Swift.Int                    // id: %2
-  %3 = global_addr @Model.a : Swift.Int : $*Int        // user: %6
-  %4 = integer_literal $Builtin.Int64, 1          // user: %5
-  %5 = struct $Int (%4 : $Builtin.Int64)          // user: %6
-  store %5 to %3 : $*Int                          // id: %6
-  %7 = integer_literal $Builtin.Int32, 0          // user: %8
-  %8 = struct $Int32 (%7 : $Builtin.Int32)        // user: %9
-  return %8 : $Int32                              // id: %9
-} // end sil function 'main'
-
-// b.getter
-sil hidden @Model.b.getter : Swift.Int : $@convention(thin) () -> Int {
-bb0:
-  %0 = global_addr @Model.a : Swift.Int : $*Int        // user: %1
-  %1 = load %0 : $*Int                            // user: %2
-  return %1 : $Int                                // id: %2
-} // end sil function 'Model.b.getter : Swift.Int'
-```
-{% endcode %}
 
 
 
@@ -254,6 +209,8 @@ bb0(%0 : $Int32, %1 : $UnsafeMutablePointer<Optional<UnsafeMutablePointer<Int8>>
   return %12 : $Int32                             // id: %13
 } // end sil function 'main'
 
+...
+
 // Drawing.render()
 sil hidden @(extension in Model):Model.Drawing.render() -> () : $@convention(method) <Self where Self : Drawing> (@in_guaranteed Self) -> () {
 // %0 "self"                                      // users: %3, %1
@@ -268,7 +225,7 @@ bb0(%0 : $*Self):
 ```
 {% endcode %}
 
-可以看到11行SVG初始化之后，调用的是Drawing.render()，并且26行Drawing.render()内部也是直接调用Drawing.circle()，SVG的circle()并没有覆盖协议扩展中的circle()。
+可以看到11行SVG初始化之后，调用的是Drawing.render()，并且28行Drawing.render()内部也是直接调用Drawing.circle()，SVG的circle()并没有覆盖协议扩展中的circle()。
 
 原因是extension中声明的函数是静态派发，编译的时候就已经确定了调用地址，类无法重写实现。
 
@@ -417,7 +374,11 @@ sil_witness_table hidden MyClass: MyProtocol module Model {
 
 #### 2. 指定派发方式
 
-
+* **final**
+* **dynamic**
+* **@objc**
+* **@Objc + dynamic**
+* **@inline**
 
 {% code title="Model.swift" %}
 ```
@@ -445,7 +406,7 @@ sil_witness_table hidden MyClass: MyProtocol module Model {
 ```
 {% endcode %}
 
-
+### swift函数派发方式总结
 
 
 
@@ -471,74 +432,7 @@ sil_witness_table hidden MyClass: MyProtocol module Model {
 
 > swift比OC快的一个关键就是可以消解动态派发。
 
-### 函数表派发
 
-{% code title="Model.swift" %}
-```
-class Point {
-    public func one() -> Int { return 1 }
-}
-
-let a = Point().one()
-```
-{% endcode %}
-
-{% code title="Model.sil" %}
-```
-// main
-sil @main : $@convention(c) (Int32, UnsafeMutablePointer<Optional<UnsafeMutablePointer<Int8>>>) -> Int32 {
-bb0(%0 : $Int32, %1 : $UnsafeMutablePointer<Optional<UnsafeMutablePointer<Int8>>>):
-  alloc_global @Model.a : Swift.Int                    // id: %2
-  %3 = global_addr @Model.a : Swift.Int : $*Int        // user: %10
-  %4 = metatype $@thick Point.Type                // user: %6
-  // function_ref Point.__allocating_init()
-  %5 = function_ref @Model.Point.__allocating_init() -> Model.Point : $@convention(method) (@thick Point.Type) -> @owned Point // user: %6
-  %6 = apply %5(%4) : $@convention(method) (@thick Point.Type) -> @owned Point // users: %9, %8, %7
-  %7 = class_method %6 : $Point, #Point.one : (Point) -> () -> Int, $@convention(method) (@guaranteed Point) -> Int // user: %8
-  %8 = apply %7(%6) : $@convention(method) (@guaranteed Point) -> Int // user: %10
-  strong_release %6 : $Point                      // id: %9
-  store %8 to %3 : $*Int                          // id: %10
-  %11 = integer_literal $Builtin.Int32, 0         // user: %12
-  %12 = struct $Int32 (%11 : $Builtin.Int32)      // user: %13
-  return %12 : $Int32                             // id: %13
-} // end sil function 'main'
-```
-{% endcode %}
-
-### 直接派发
-
-{% code title="Model.swift" %}
-```
-final class Point {
-    public func one() -> Int { return 1 }
-}
-
-let a = Point().one()
-```
-{% endcode %}
-
-{% code title="Model.sil" %}
-```
-// main
-sil @main : $@convention(c) (Int32, UnsafeMutablePointer<Optional<UnsafeMutablePointer<Int8>>>) -> Int32 {
-bb0(%0 : $Int32, %1 : $UnsafeMutablePointer<Optional<UnsafeMutablePointer<Int8>>>):
-  alloc_global @Model.a : Swift.Int                    // id: %2
-  %3 = global_addr @Model.a : Swift.Int : $*Int        // user: %10
-  %4 = metatype $@thick Point.Type                // user: %6
-  // function_ref Point.__allocating_init()
-  %5 = function_ref @Model.Point.__allocating_init() -> Model.Point : $@convention(method) (@thick Point.Type) -> @owned Point // user: %6
-  %6 = apply %5(%4) : $@convention(method) (@thick Point.Type) -> @owned Point // users: %9, %8
-  // function_ref Point.one()
-  %7 = function_ref @Model.Point.one() -> Swift.Int : $@convention(method) (@guaranteed Point) -> Int // user: %8
-  %8 = apply %7(%6) : $@convention(method) (@guaranteed Point) -> Int // user: %10
-  strong_release %6 : $Point                      // id: %9
-  store %8 to %3 : $*Int                          // id: %10
-  %11 = integer_literal $Builtin.Int32, 0         // user: %12
-  %12 = struct $Int32 (%11 : $Builtin.Int32)      // user: %13
-  return %12 : $Int32                             // id: %13
-} // end sil function 'main'
-```
-{% endcode %}
 
 ### V-Table & Witness-Table
 
