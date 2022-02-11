@@ -52,9 +52,9 @@ Clang是基于LLVM架构的C/C++/Objective-C编程语言的编译器前端。
 
 可以看到Clang在实现的时候，很多阶段交织在一起，耦合严重，而swift加入了sil中间层，解决了这个问题。
 
-### sil
+## sil
 
-#### 特点
+### 特点
 
 *   Fully represents program semantics&#x20;
 
@@ -69,7 +69,7 @@ Clang是基于LLVM架构的C/C++/Objective-C编程语言的编译器前端。
 
     在源代码和 LLVM 之间架起了抽象的桥梁
 
-#### 语法
+### 语法
 
 [官方文档](https://github.com/apple/swift/blob/main/docs/SIL.rst)
 
@@ -86,14 +86,14 @@ Clang是基于LLVM架构的C/C++/Objective-C编程语言的编译器前端。
 * `thick`：动态的，运行时的
 * `cond_br`：类似于三目运算符，判断寄存器上值进行代码块跳转
 
-#### 作用
+### 作用
 
 * 看编译器不同级别的优化（比如无用代码裁剪，不同写法对性能影响）
 * 了解函数派发方式（`final`/`static`/`dynamic` 等）对函数的影响，KVO
 * 了解swift语言的底层实现
 * 等等
 
-#### Builtin <a href="#builtin" id="builtin"></a>
+### Builtin <a href="#builtin" id="builtin"></a>
 
 Builtin 将 LLVM IR 的类型和方法直接暴露给 Swift 标准库，使用时没有额外的运行时负担。
 
@@ -303,16 +303,4 @@ bb0(%0 : $Int32, %1 : $UnsafeMutablePointer<Optional<UnsafeMutablePointer<Int8>>
 {% endcode %}
 
 
-
-### sil对protocol的处理
-
-{% code title="Model.swift" %}
-```
-```
-{% endcode %}
-
-{% code title="Model.sil" %}
-```
-```
-{% endcode %}
 
