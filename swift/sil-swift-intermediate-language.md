@@ -771,17 +771,3 @@ sil_vtable MyClass1 {
 
 
 
-### V-Table & Witness-Table
-
-{% code title="Model.swift" %}
-```
-```
-{% endcode %}
-
-{% code title="Model.sil" %}
-```
-```
-{% endcode %}
-
-
-
