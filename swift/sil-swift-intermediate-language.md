@@ -759,7 +759,7 @@ sil_vtable MyClass1 {
 
 | **数据类型**       | **直接派发**                                                                                     | **函数表派发**   | **消息派发**        |
 | -------------- | -------------------------------------------------------------------------------------------- | ----------- | --------------- |
-| **NSObject**   | extension/final/static                                                                       | 声明作用域中方法    | @objc + dynamic |
+| **NSObject子类** | extension/final/static                                                                       | 声明作用域中方法    | @objc + dynamic |
 | **Class**      | extension/final/static                                                                       | 声明作用域中方法    | @objc + dynamic |
 | **Protocol**   | extension                                                                                    | 声明作用域中方法    | 无               |
 | **Value Type** | 所有方法                                                                                         | 无           | 无               |
