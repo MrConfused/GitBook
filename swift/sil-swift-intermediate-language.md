@@ -208,18 +208,6 @@ bb0:
 
 ## 通过SIL看swift中的函数派发方式
 
-swift中有三种函数派发方式：直接派发（静态派发）、函数表派发（动态派发），由于swift用的是OC的运行时机制，所以还有消息派发方式（动态派发）。
-
-
-
-| 数据类型           | 直接派发                                                                   | 函数表派发       | 消息派发                           |
-| -------------- | ---------------------------------------------------------------------- | ----------- | ------------------------------ |
-| **NSObject**   | @nonobjc 或者 final 修饰的方法                                                | 声明作用域中方法    | 扩展方法及被 dynamic 修饰的方法           |
-| **Class**      | 不被 @objc 修饰的扩展方法及被 final 修饰的方法                                         | 声明作用域中方法    | dynamic 修饰的方法或者被 @objc 修饰的扩展方法 |
-| **Protocol**   | 扩展方法                                                                   | 声明作用域中方法    | @objc 修饰的方法或者被 objc 修饰的协议中所有方法 |
-| **Value Type** | 所有方法                                                                   | 无           | 无                              |
-| 其他             | 全局方法，staic 修饰的方法；使用 final 声明的类里面的所有方法；使用 private 声明的方法和属性会隐式 final 声明； | <p><br></p> | <p><br></p>                    |
-
 
 
 ### 看一个示例
@@ -277,22 +265,196 @@ bb0(%0 : $*Self):
   %4 = tuple ()                                   // user: %5
   return %4 : $()                                 // id: %5
 } // end sil function '(extension in Model):Model.Drawing.render() -> ()'
+```
+{% endcode %}
 
-sil_vtable SVG {
-  #SVG.circle: (SVG) -> () -> () : @Model.SVG.circle() -> ()	// SVG.circle()
-  #SVG.init!allocator: (SVG.Type) -> () -> SVG : @Model.SVG.__allocating_init() -> Model.SVG	// SVG.__allocating_init()
-  #SVG.deinit!deallocator: @Model.SVG.__deallocating_deinit	// SVG.__deallocating_deinit
+可以看到11行SVG初始化之后，调用的是Drawing.render()，并且26行Drawing.render()内部也是直接调用Drawing.circle()，SVG的circle()并没有覆盖协议扩展中的circle()。
+
+原因是extension中声明的函数是静态派发，编译的时候就已经确定了调用地址，类无法重写实现。
+
+### swift的派发机制
+
+swift中有三种函数派发方式：直接派发（静态派发）、函数表派发（动态派发），由于swift用的是OC的运行时机制，所以还有消息派发方式（动态派发）。
+
+#### 直接派发
+
+CPU直接拿到函数地址，进行调用。
+
+* 优点：
+  * 使用的指令集最少，效率最高。
+  * 编译器优化也会对函数进行内联，省去函数调用的开销，提升执行速度。
+* 缺点：没有动态性，不支持继承。
+
+#### 函数表派发
+
+函数表中存储了函数的指针，调用函数时通过函数表找到函数指针进行调用。
+
+* 优点：
+  * 查表的实现简单、性能可预知
+  * 保证了动态性的同时也兼顾了执行效率
+* 缺点：
+  * 比静态派发多了两次读（读函数表、读函数指针）和一次跳转（函数跳转）
+  * 编译器对有副作用的函数无法优化
+
+#### 消息派发
+
+就是OC中的消息传递，是最动态的派发方式。
+
+* 优点：
+  * 动态性最高
+  * Method Swizzling
+  * isa Swizzling
+* 缺点：
+  * 效率最低（但是缓存机制会让之后发送相同的消息时，执行速度会很快）
+
+### 影响swift派发机制的因素
+
+#### 1. 数据类型及函数生命的位置
+
+| 类型         | 初始声明                                 | 扩展                                   |
+| ---------- | ------------------------------------ | ------------------------------------ |
+| 值类型        | <mark style="color:red;">静态派发</mark> | <mark style="color:red;">静态派发</mark> |
+| 协议         | 函数表派发                                | <mark style="color:red;">静态派发</mark> |
+| 类          | 函数表派发                                | <mark style="color:red;">静态派发</mark> |
+| NSObject子类 | 函数表派发                                | <mark style="color:red;">静态派发</mark> |
+
+
+
+{% code title="Model.swift" %}
+```
+protocol MyProtocol {
+    func protocolFunc()
+}
+extension MyProtocol {
+    func protocolFuncInExtension() {}
 }
 
-sil_witness_table hidden SVG: Drawing module Model {
-  method #Drawing.render: <Self where Self : Drawing> (Self) -> () -> () : @protocol witness for Model.Drawing.render() -> () in conformance Model.SVG : Model.Drawing in Model	// protocol witness for Drawing.render() in conformance SVG
+class MyClass: MyProtocol {
+    func classFunc() {}
+    func protocolFunc() {}
+}
+extension MyClass {
+    func classFuncInExtension() {}
+}
+
+struct MyStruct {
+    func structFunc() {}
+}
+extension MyStruct {
+    func structFuncInExtension() {}
+}
+
+class MyNSObjectSubClass: NSObject {
+    func nsObjectSubClass() {}
+}
+extension MyNSObjectSubClass {
+    func nsObjectSubClassInExtension() {}
+}
+
+MyClass().classFunc()
+MyClass().classFuncInExtension()
+MyStruct().structFunc()
+MyStruct().structFuncInExtension()
+MyClass().protocolFunc()
+MyClass().protocolFuncInExtension()
+MyNSObjectSubClass().nsObjectSubClass()
+MyNSObjectSubClass().nsObjectSubClassInExtension()
+```
+{% endcode %}
+
+{% code title="Model.sil" %}
+```
+// main
+sil @main : $@convention(c) (Int32, UnsafeMutablePointer<Optional<UnsafeMutablePointer<Int8>>>) -> Int32 {
+...
+  %5 = class_method %4 : $MyClass, #MyClass.classFunc : (MyClass) -> () -> (), $@convention(method) (@guaranteed MyClass) -> () // user: %6
+...
+  // function_ref MyClass.classFuncInExtension()
+  %11 = function_ref @Model.MyClass.classFuncInExtension() -> () : $@convention(method) (@guaranteed MyClass) -> () // user: %12
+...
+  // function_ref MyStruct.structFunc()
+  %17 = function_ref @Model.MyStruct.structFunc() -> () : $@convention(method) (MyStruct) -> () // user: %18
+...
+  // function_ref MyStruct.structFuncInExtension()
+  %22 = function_ref @Model.MyStruct.structFuncInExtension() -> () : $@convention(method) (MyStruct) -> () // user: %23
+...
+  %27 = class_method %26 : $MyClass, #MyClass.protocolFunc : (MyClass) -> () -> (), $@convention(method) (@guaranteed MyClass) -> () // user: %28
+...
+  // function_ref MyProtocol.protocolFuncInExtension()
+  %35 = function_ref @(extension in Model):Model.MyProtocol.protocolFuncInExtension() -> () : $@convention(method) <τ_0_0 where τ_0_0 : MyProtocol> (@in_guaranteed τ_0_0) -> () // user: %36
+...
+  %42 = class_method %41 : $MyNSObjectSubClass, #MyNSObjectSubClass.nsObjectSubClass : (MyNSObjectSubClass) -> () -> (), $@convention(method) (@guaranteed MyNSObjectSubClass) -> () // user: %43
+...
+  // function_ref MyNSObjectSubClass.nsObjectSubClassInExtension()
+  %48 = function_ref @Model.MyNSObjectSubClass.nsObjectSubClassInExtension() -> () : $@convention(method) (@guaranteed MyNSObjectSubClass) -> () // user: %49
+...
+} // end sil function 'main'
+
+sil_vtable MyClass {
+  #MyClass.classFunc: (MyClass) -> () -> () : @Model.MyClass.classFunc() -> ()	// MyClass.classFunc()
+  #MyClass.protocolFunc: (MyClass) -> () -> () : @Model.MyClass.protocolFunc() -> ()	// MyClass.protocolFunc()
+  #MyClass.init!allocator: (MyClass.Type) -> () -> MyClass : @Model.MyClass.__allocating_init() -> Model.MyClass	// MyClass.__allocating_init()
+  #MyClass.deinit!deallocator: @Model.MyClass.__deallocating_deinit	// MyClass.__deallocating_deinit
+}
+
+sil_vtable MyNSObjectSubClass {
+  #MyNSObjectSubClass.nsObjectSubClass: (MyNSObjectSubClass) -> () -> () : @Model.MyNSObjectSubClass.nsObjectSubClass() -> ()	// MyNSObjectSubClass.nsObjectSubClass()
+  #MyNSObjectSubClass.deinit!deallocator: @Model.MyNSObjectSubClass.__deallocating_deinit	// MyNSObjectSubClass.__deallocating_deinit
+}
+
+sil_witness_table hidden MyClass: MyProtocol module Model {
+  method #MyProtocol.protocolFunc: <Self where Self : MyProtocol> (Self) -> () -> () : @protocol witness for Model.MyProtocol.protocolFunc() -> () in conformance Model.MyClass : Model.MyProtocol in Model	// protocol witness for MyProtocol.protocolFunc() in conformance MyClass
 }
 ```
 {% endcode %}
 
-可以看到1111SVG调用的协议扩展实现的方法，SVG中的实现并没有覆盖协议的扩展。
+可以看到：
 
-原因是extension中声明的函数是静态派发，编译的时候就已经确定了调用地址，类无法重写实现。
+* 在调用时只有MyClass.classFunc()、MyClass.protocolFunc()和MyNSObjectSubClass.nsObjectSubClass()是用class\_method调用，且在vtable中，是函数表派发
+* 其他都是用function\_ref调用，是直接派发
+
+
+
+#### 2. 指定派发方式
+
+
+
+{% code title="Model.swift" %}
+```
+```
+{% endcode %}
+
+{% code title="Model.sil" %}
+```
+```
+{% endcode %}
+
+
+
+#### 3. 编译器优化
+
+
+
+{% code title="Model.swift" %}
+```
+```
+{% endcode %}
+
+{% code title="Model.sil" %}
+```
+```
+{% endcode %}
+
+
+
+
+
+| **NSObject**   | @nonobjc 或者 final 修饰的方法                                                | 声明作用域中方法    | 扩展方法及被 dynamic 修饰的方法           |
+| -------------- | ---------------------------------------------------------------------- | ----------- | ------------------------------ |
+| **Class**      | 不被 @objc 修饰的扩展方法及被 final 修饰的方法                                         | 声明作用域中方法    | dynamic 修饰的方法或者被 @objc 修饰的扩展方法 |
+| **Protocol**   | 扩展方法                                                                   | 声明作用域中方法    | @objc 修饰的方法或者被 objc 修饰的协议中所有方法 |
+| **Value Type** | 所有方法                                                                   | 无           | 无                              |
+| 其他             | 全局方法，staic 修饰的方法；使用 final 声明的类里面的所有方法；使用 private 声明的方法和属性会隐式 final 声明； | <p><br></p> | <p><br></p>                    |
 
 
 
