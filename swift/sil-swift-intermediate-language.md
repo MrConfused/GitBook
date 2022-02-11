@@ -107,7 +107,7 @@ swiftc -emit-sil main.swift
 swiftc -emit-sil main.swift >> main.sil
 
 // 将 main.swift 编译成 SIL的同时， 将命名重整后的符号恢复原样，并保存到 main.sil 文件中
-swiftc -emit-sil main.swift | xcrun swift-demangle >> main.sil
+swiftc -emit-sil main.swift | xcrun swift-demangle > main.sil
 ```
 
 ## 通过sil理解swift的底层实现
@@ -206,9 +206,97 @@ bb0:
 
 
 
-### swift中的两种函数派发方式
+## 通过SIL看swift中的函数派发方式
 
-swift中有两种函数派发方式：函数表派发（动态派发）和直接派发（静态派发）。
+swift中有三种函数派发方式：直接派发（静态派发）、函数表派发（动态派发），由于swift用的是OC的运行时机制，所以还有消息派发方式（动态派发）。
+
+
+
+| 数据类型           | 直接派发                                                                   | 函数表派发       | 消息派发                           |
+| -------------- | ---------------------------------------------------------------------- | ----------- | ------------------------------ |
+| **NSObject**   | @nonobjc 或者 final 修饰的方法                                                | 声明作用域中方法    | 扩展方法及被 dynamic 修饰的方法           |
+| **Class**      | 不被 @objc 修饰的扩展方法及被 final 修饰的方法                                         | 声明作用域中方法    | dynamic 修饰的方法或者被 @objc 修饰的扩展方法 |
+| **Protocol**   | 扩展方法                                                                   | 声明作用域中方法    | @objc 修饰的方法或者被 objc 修饰的协议中所有方法 |
+| **Value Type** | 所有方法                                                                   | 无           | 无                              |
+| 其他             | 全局方法，staic 修饰的方法；使用 final 声明的类里面的所有方法；使用 private 声明的方法和属性会隐式 final 声明； | <p><br></p> | <p><br></p>                    |
+
+
+
+### 看一个示例
+
+
+
+{% code title="Model.swift" %}
+```
+protocol Drawing {
+    func render()
+}
+
+extension Drawing {
+    func circle() { print("protocol") }
+    func render() { circle() }
+}
+
+class SVG: Drawing {
+    func circle() { print("class") }
+}
+
+SVG().render() // protocol
+```
+{% endcode %}
+
+{% code title="Model.sil" %}
+```
+// main
+sil @main : $@convention(c) (Int32, UnsafeMutablePointer<Optional<UnsafeMutablePointer<Int8>>>) -> Int32 {
+bb0(%0 : $Int32, %1 : $UnsafeMutablePointer<Optional<UnsafeMutablePointer<Int8>>>):
+  %2 = metatype $@thick SVG.Type                  // user: %4
+  // function_ref SVG.__allocating_init()
+  %3 = function_ref @Model.SVG.__allocating_init() -> Model.SVG : $@convention(method) (@thick SVG.Type) -> @owned SVG // user: %4
+  %4 = apply %3(%2) : $@convention(method) (@thick SVG.Type) -> @owned SVG // user: %6
+  %5 = alloc_stack $SVG                           // users: %6, %10, %9, %8
+  store %4 to %5 : $*SVG                          // id: %6
+  // function_ref Drawing.render()
+  %7 = function_ref @(extension in Model):Model.Drawing.render() -> () : $@convention(method) <τ_0_0 where τ_0_0 : Drawing> (@in_guaranteed τ_0_0) -> () // user: %8
+  %8 = apply %7<SVG>(%5) : $@convention(method) <τ_0_0 where τ_0_0 : Drawing> (@in_guaranteed τ_0_0) -> ()
+  destroy_addr %5 : $*SVG                         // id: %9
+  dealloc_stack %5 : $*SVG                        // id: %10
+  %11 = integer_literal $Builtin.Int32, 0         // user: %12
+  %12 = struct $Int32 (%11 : $Builtin.Int32)      // user: %13
+  return %12 : $Int32                             // id: %13
+} // end sil function 'main'
+
+// Drawing.render()
+sil hidden @(extension in Model):Model.Drawing.render() -> () : $@convention(method) <Self where Self : Drawing> (@in_guaranteed Self) -> () {
+// %0 "self"                                      // users: %3, %1
+bb0(%0 : $*Self):
+  debug_value_addr %0 : $*Self, let, name "self", argno 1 // id: %1
+  // function_ref Drawing.circle()
+  %2 = function_ref @(extension in Model):Model.Drawing.circle() -> () : $@convention(method) <τ_0_0 where τ_0_0 : Drawing> (@in_guaranteed τ_0_0) -> () // user: %3
+  %3 = apply %2<Self>(%0) : $@convention(method) <τ_0_0 where τ_0_0 : Drawing> (@in_guaranteed τ_0_0) -> ()
+  %4 = tuple ()                                   // user: %5
+  return %4 : $()                                 // id: %5
+} // end sil function '(extension in Model):Model.Drawing.render() -> ()'
+
+sil_vtable SVG {
+  #SVG.circle: (SVG) -> () -> () : @Model.SVG.circle() -> ()	// SVG.circle()
+  #SVG.init!allocator: (SVG.Type) -> () -> SVG : @Model.SVG.__allocating_init() -> Model.SVG	// SVG.__allocating_init()
+  #SVG.deinit!deallocator: @Model.SVG.__deallocating_deinit	// SVG.__deallocating_deinit
+}
+
+sil_witness_table hidden SVG: Drawing module Model {
+  method #Drawing.render: <Self where Self : Drawing> (Self) -> () -> () : @protocol witness for Model.Drawing.render() -> () in conformance Model.SVG : Model.Drawing in Model	// protocol witness for Drawing.render() in conformance SVG
+}
+```
+{% endcode %}
+
+可以看到1111SVG调用的协议扩展实现的方法，SVG中的实现并没有覆盖协议的扩展。
+
+原因是extension中声明的函数是静态派发，编译的时候就已经确定了调用地址，类无法重写实现。
+
+
+
+
 
 我们知道静态派发要比动态派发效率高。
 
@@ -221,7 +309,7 @@ swift中有两种函数派发方式：函数表派发（动态派发）和直接
 
 > swift比OC快的一个关键就是可以消解动态派发。
 
-#### 函数表派发
+### 函数表派发
 
 {% code title="Model.swift" %}
 ```
@@ -255,7 +343,7 @@ bb0(%0 : $Int32, %1 : $UnsafeMutablePointer<Optional<UnsafeMutablePointer<Int8>>
 ```
 {% endcode %}
 
-#### 直接派发
+### 直接派发
 
 {% code title="Model.swift" %}
 ```
