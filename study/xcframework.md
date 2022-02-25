@@ -2,6 +2,10 @@
 
 Framework:是一个有着特定组织格式的文件夹（bundle）。由Info.plist描述内容组织格式。
 
+静态库（.a/.framework）：在链接时完整的拷贝到可执行程序中，每个用到的程序都需要拷贝。
+
+动态库（.dylib/.tbd/.framework）：运行时动态加载到内存中，可供多个程序共享。
+
 
 
 XCFramework：是一种特殊的Framework，但是他里面的代码是支持多个平台和架构的。是一种打包和发布库的方式。
