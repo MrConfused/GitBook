@@ -12,7 +12,7 @@ LLVM是一套用来开发编译器的架构。
 
 LLVM编译架构的三段式设计（前端、中间优化器、后端）：
 
-![LLVM三段式](../.gitbook/assets/image.png)
+![LLVM三段式](<../.gitbook/assets/image (1).png>)
 
 * 前端：**解析源代码**。通过词法分析、语法分析、语义分析，检查代码中是否存在错误，然后构建**抽象语法树**（Abstract Syntax Tree ， **AST**），然后生成**中间代码（** Intermediate Representation，**IR**，IR的表现形式有三种：text、memory、bitcode**）。**
 * 中间优化器：负责各种优化，**缩小包的体积**（剥离符号 **）** 、**改善代码的运行时间（** 消除冗余计算、减少指针跳转次数等）。
@@ -28,9 +28,9 @@ LLVM把编译器的前端和后端解耦，使得他的可扩展性非常强。
 
 Clang是基于LLVM架构的C/C++/Objective-C编程语言的编译器前端。
 
-![Clang编译过程](<../.gitbook/assets/image (3).png>)
+![Clang编译过程](<../.gitbook/assets/image (3) (1).png>)
 
-![Clang的编译过程](<../.gitbook/assets/image (2).png>)
+![Clang的编译过程](<../.gitbook/assets/image (2) (1).png>)
 
 可以看到Clang编译过程中有些问题：
 
@@ -44,9 +44,9 @@ Clang是基于LLVM架构的C/C++/Objective-C编程语言的编译器前端。
 
 ## swift编译器
 
-![swift编译过程](<../.gitbook/assets/image (5).png>)
+![swift编译过程](<../.gitbook/assets/image (5) (1).png>)
 
-![swift的前端编译过程](<../.gitbook/assets/image (1).png>)
+![swift的前端编译过程](<../.gitbook/assets/image (1) (1).png>)
 
 与clang相比，swift的前端编译流程中，在AST和IR中间多了一层SIL，以弥补clang的缺陷，原本在 clang 中独立的静态分析和 IR 生成阶段整合了起来**。**
 
