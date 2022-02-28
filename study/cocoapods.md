@@ -241,25 +241,25 @@ end
 
 ![CocoaPods项目的依赖](<../.gitbook/assets/image (6).png>)
 
-#### 1.1 CLAide
+#### 1.1 [CLAide](https://github.com/CocoaPods/CLAide)
 
-是个命令行解释器，负责解析pod命令。
+是个[命令行解释器](https://www.wikiwand.com/en/Command-line\_argument\_parsing)，负责解析pod命令。
 
 也可以封装常用的脚本，将其打包成常用的命令行小工具。
 
-#### 1.2 cocoapods-core
+#### 1.2 [cocoapods-core](https://github.com/CocoaPods/Core)
 
 用于cocoaPods中模版的解析（Podfile、.podspec、.lock）
 
-#### 1.3 cocoapods-downloader
+#### 1.3 [cocoapods-downloader](https://github.com/CocoaPods/cocoapods-downloader)
 
 用来下载源码的小工具，支持各种类型的版本管理工具，包括 HTTP / SVN / Git / Mercurial。可以处理 `tags`，`commits`，`revisions`，`branches` ， `zips` 及其他版本管理用到的操作。
 
-#### 1.4 Molinillo
+#### 1.4 [Molinillo](https://github.com/CocoaPods/Molinillo/blob/master/ARCHITECTURE.md)
 
 用来处理CocoaPods、Bundler、RubyGems的依赖。是一个具有前向检查的回溯算法。
 
-#### 1.5 Xcodeproj
+#### 1.5 [Xcodeproj](https://github.com/CocoaPods/Xcodeproj)
 
 可通过 Ruby 来操作 Xcode 项目的创建和编辑等。可友好的支持 Xcode 项目的脚本管理和 libraries 构建，以及 Xcode 工作空间 `.xcworkspace`和配置文件 `.xcconfig` 的管理。
 
@@ -267,7 +267,7 @@ end
 
 插件管理工具，其中有 `pod plugin` 全套命令，支持对于 CocoaPods 插件的`list、search、create`功能。
 
-### 2. CocoaPods的工作流程
+### 2 CocoaPods的工作流程
 
 #### 2.1 命令入口（`pod`命令）
 
@@ -297,11 +297,11 @@ end
     验证之前流程中的产物 (pod 所生成的 Targets) 的合法性。
 
     * 验证是否有重名的 `framework`
-    * 验证动态库中是否有静态链接库 (`.a` 或者 `.framework`) 依赖
+    * 验证动态库中是否有静态链接库 (`.a` 或者 `.framework`) 依赖，[issue](https://github.com/CocoaPods/CocoaPods/issues/3289)
     * 确保 Swift Pod 的 Swift 版本正确配置且互相兼容的。
     * 检测 Swift 库的依赖的 Objective-C 库是否支持了 module。
       * Swift 库在解析后会生成对应的 `modulemap` 和 `umbrella.h` 文件，这是 LLVM Module 的标配。
-      * Objective-C 也是支持 LLVM Module。当我们以 Dynamic Framework 的方式引入 Objective-C 库时，Xcode 支持配置并生成 header，**但是当以静态库 .a方式引入时， 需要自己编写对应的 `umbrella.h` 和 `modulemap`**，如果Objective-C 库启用了 `modular_headers`，则 CocoaPods 会为我们生成对应 `modulemap` 和 `umbrella.h` 来支持 LLVM Module。 参考：[CocoaPods 1.5.0 — Swift Static Libraries](http://blog.cocoapods.org/CocoaPods-1.5.0)。
+      * Objective-C 也是支持 [LLVM Module](http://clang.llvm.org/docs/Modules.html)。当我们以 Dynamic Framework 的方式引入 Objective-C 库时，Xcode 支持配置并生成 header，**但是当以静态库 .a方式引入时， 需要自己编写对应的 `umbrella.h` 和 `modulemap`**，如果Objective-C 库启用了 `modular_headers`，则 CocoaPods 会为我们生成对应 `modulemap` 和 `umbrella.h` 来支持 LLVM Module。 参考：[CocoaPods 1.5.0 — Swift Static Libraries](http://blog.cocoapods.org/CocoaPods-1.5.0)。
       * ![](<../.gitbook/assets/image (2).png>)
 *   #### 生成工程 (Integrate)
 
