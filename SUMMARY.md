@@ -25,7 +25,7 @@
 * [混编--NS\_REFINED\_FOR\_SWIFT](swift/hun-bian-nsrefinedforswift.md)
 * [动画](swift/dong-hua.md)
 * [SIL(Swift Intermediate Language )](swift/sil-swift-intermediate-language.md)
-* [Swift中的mi x](swift/swift-zhong-de-mi-x.md)
+* [Swift中的mix-in](swift/swift-zhong-de-mixin.md)
 
 ## 🐼 Git
 

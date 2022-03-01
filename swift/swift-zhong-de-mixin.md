@@ -1,4 +1,4 @@
-# Swift中的mi x
+# Swift中的mix-in
 
 ## 多继承的问题
 
