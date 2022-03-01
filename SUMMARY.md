@@ -7,17 +7,20 @@
 * [正则表达式](<README (1).md>)
 * [记录](study/ji-lu.md)
 * [Gerrit VS GitLab](study/gerrit-vs-gitlab.md)
-* [CocoaPods](study/cocoapods.md)
 * [Target](study/target.md)
-* [iOS签名](study/ios-qian-ming.md)
-* [分析iOS项目编译耗时](study/fen-xi-ios-xiang-mu-bian-yi-hao-shi.md)
-* [TCA学习笔记](study/tca-xue-xi-bi-ji.md)
 * [shell的高级指令](study/shell-de-gao-ji-zhi-ling.md)
-* [XCFramework](study/xcframework.md)
 
-## 🙉 Swift
+## 🍎 iOS
 
-* [swift脚本](swift/swift-jiao-ben.md)
+* [XCFramework](ios/xcframework.md)
+* [TCA学习笔记](ios/tca-xue-xi-bi-ji.md)
+* [分析iOS项目编译耗时](ios/fen-xi-ios-xiang-mu-bian-yi-hao-shi.md)
+* [CocoaPods](ios/cocoapods.md)
+* [iOS签名](ios/ios-qian-ming.md)
+
+## 🦅 Swift
+
+* [swift脚本](study/swift-jiao-ben.md)
 * [Attributes](swift/attributes.md)
 * [KeyPath](swift/keypath.md)
 * [Decoder](swift/decoder.md)
