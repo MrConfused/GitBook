@@ -239,7 +239,7 @@ end
 ```
 {% endcode %}
 
-![CocoaPods项目的依赖](<../.gitbook/assets/image (6).png>)
+![CocoaPods项目的依赖](<../.gitbook/assets/image (6) (1).png>)
 
 #### 1.1 [CLAide](https://github.com/CocoaPods/CLAide)
 
