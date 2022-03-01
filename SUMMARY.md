@@ -14,10 +14,10 @@
 * [TCA学习笔记](study/tca-xue-xi-bi-ji.md)
 * [shell的高级指令](study/shell-de-gao-ji-zhi-ling.md)
 * [XCFramework](study/xcframework.md)
-* [swift脚本](study/swift-jiao-ben.md)
 
 ## 🙉 Swift
 
+* [swift脚本](swift/swift-jiao-ben.md)
 * [Attributes](swift/attributes.md)
 * [KeyPath](swift/keypath.md)
 * [Decoder](swift/decoder.md)
