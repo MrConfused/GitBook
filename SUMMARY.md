@@ -17,6 +17,7 @@
 * [分析iOS项目编译耗时](ios/fen-xi-ios-xiang-mu-bian-yi-hao-shi.md)
 * [CocoaPods](ios/cocoapods.md)
 * [iOS签名](ios/ios-qian-ming.md)
+* [Tricks](ios/tricks.md)
 
 ## 🦅 Swift
 
